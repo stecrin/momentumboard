@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stefan Command System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== DEEP FOCUS OVERLAY ===== -->
+<div id="deep-focus-overlay" class="deep-focus-overlay hidden">
+    <div class="df-content">
+        <div class="df-badge">DEEP FOCUS MODE</div>
+        <h2 class="df-task" id="df-task-name">No major mission set</h2>
+        <p class="df-hint">All distractions hidden. Do this one thing first.</p>
+        <div class="df-next" id="df-next-action"></div>
+        <button class="btn btn-outline" onclick="setBrainState('normal')">Exit Deep Focus</button>
+    </div>
+</div>
+
+<!-- ===== EMERGENCY RESET MODAL ===== -->
+<div id="emergency-modal" class="modal" aria-hidden="true">
+    <div class="modal-content emergency-content">
+        <h2 class="emergency-title">Stop.</h2>
+        <div class="emergency-steps">
+            <div class="e-step">💧 Drink water right now.</div>
+            <div class="e-step timer-step">
+                <span>🌬️ Breathe for 60 seconds.</span>
+                <button id="start-timer-btn" class="btn btn-calm btn-sm">Start Timer</button>
+                <div id="timer-display" class="timer-display hidden">
+                    <div class="timer-circle"><span id="timer-count">60</span></div>
+                    <p id="timer-status">Breathe slowly…</p>
+                </div>
+            </div>
+            <div class="e-step">📝 Write only 3 tasks below.</div>
+            <textarea id="emergency-tasks" rows="4" placeholder="1. &#10;2. &#10;3. "></textarea>
+            <div class="e-step">☑️ Choose the smallest task from those 3.</div>
+            <div class="e-step">⏱️ Start working on it for just 10 minutes.</div>
+        </div>
+        <div class="emergency-actions">
+            <button class="btn btn-primary" onclick="closeEmergency(true)">Save tasks &amp; I'm ready</button>
+            <button class="btn btn-ghost" onclick="closeEmergency(false)">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TASK BREAKDOWN MODAL ===== -->
+<div id="breakdown-modal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+        <button class="close-btn" onclick="closeBreakdown()" aria-label="Close">&#x2715;</button>
+        <h3 class="modal-title">Task Breakdown</h3>
+        <div id="bd-task-name" class="task-label-display"></div>
+        <div class="form-group">
+            <label for="bd-category">Category</label>
+            <select id="bd-category"></select>
+        </div>
+        <div class="form-group">
+            <label for="bd-outcome">What is the final outcome?</label>
+            <input type="text" id="bd-outcome" placeholder="When this is done, I will have…">
+        </div>
+        <div class="form-group">
+            <label for="bd-next-action">What is the next smallest action?</label>
+            <input type="text" id="bd-next-action" placeholder="The very first tiny step is…">
+        </div>
+        <div class="form-group">
+            <label>Flags</label>
+            <div class="checks">
+                <label class="check-item"><input type="checkbox" id="bd-urgent"> Urgent</label>
+                <label class="check-item"><input type="checkbox" id="bd-money"> Makes Money</label>
+                <label class="check-item"><input type="checkbox" id="bd-stress"> Reduces Stress</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="bd-deadline">Deadline <span class="label-optional">(optional)</span></label>
+            <input type="date" id="bd-deadline">
+        </div>
+        <div class="form-group">
+            <label>Energy Required</label>
+            <div class="energy-options">
+                <label class="radio-item"><input type="radio" name="bd-energy" value="low"> Low</label>
+                <label class="radio-item"><input type="radio" name="bd-energy" value="medium" checked> Medium</label>
+                <label class="radio-item"><input type="radio" name="bd-energy" value="high"> High</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Recurring Task</label>
+            <div class="checks">
+                <label class="check-item">
+                    <input type="checkbox" id="bd-recurring" onchange="toggleRecurrenceOptions(this.checked)">
+                    Repeat this task
+                </label>
+            </div>
+        </div>
+        <div id="bd-recurrence-options" class="recurrence-options" style="display:none">
+            <div class="form-group" style="margin-bottom:12px">
+                <label for="bd-recurrence-type">Frequency</label>
+                <select id="bd-recurrence-type" onchange="onRecurrenceTypeChange(this.value)">
+                    <option value="daily">Daily</option>
+                    <option value="weekdays">Weekdays (Mon&ndash;Fri)</option>
+                    <option value="weekly">Weekly &mdash; pick one day</option>
+                    <option value="custom">Custom days</option>
+                </select>
+            </div>
+            <div id="bd-custom-days" class="day-checkboxes" style="display:none">
+                <span class="day-cb-label">On these days:</span>
+                <div class="day-cb-grid">
+                    <label class="check-item"><input type="checkbox" name="bd-day" value="Monday"> Mon</label>
+                    <label class="check-item"><input type="checkbox" name="bd-day" value="Tuesday"> Tue</label>
+                    <label class="check-item"><input type="checkbox" name="bd-day" value="Wednesday"> Wed</label>
+                    <label class="check-item"><input type="checkbox" name="bd-day" value="Thursday"> Thu</label>
+                    <label class="check-item"><input type="checkbox" name="bd-day" value="Friday"> Fri</label>
+                    <label class="check-item"><input type="checkbox" name="bd-day" value="Saturday"> Sat</label>
+                    <label class="check-item"><input type="checkbox" name="bd-day" value="Sunday"> Sun</label>
+                </div>
+            </div>
+        </div>
+        <!-- Subtasks -->
+        <div class="form-group">
+            <label>Subtasks</label>
+            <div id="bd-subtasks-list" class="subtasks-list"></div>
+            <div class="subtask-btn-row">
+                <button type="button" class="btn btn-ai btn-sm" onclick="suggestSubtasksForBreakdown()">&#10022; Suggest Subtasks</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="addSubtaskRow()">+ Add Subtask</button>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" onclick="saveBreakdown()">Save Task</button>
+    </div>
+</div>
+
+<!-- ===== ORGANISE PREVIEW MODAL ===== -->
+<div id="organise-modal" class="modal" aria-hidden="true">
+    <div class="modal-content organise-content">
+        <button class="close-btn" onclick="closeOrganise()">&#x2715;</button>
+        <div class="organise-header">
+            <div class="ai-label">✦ AI Executive Officer</div>
+            <h3 class="modal-title">Organised Plan</h3>
+            <p class="hint" id="organise-subtitle"></p>
+        </div>
+        <div id="organise-list"></div>
+        <div class="organise-footer">
+            <button class="btn btn-ai" onclick="acceptAllOrganised()">Accept All &rarr; Tasks</button>
+            <button class="btn btn-ghost" onclick="closeOrganise()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== HEADER ===== -->
+<header id="app-header">
+    <div class="header-inner">
+        <div class="logo">Command System</div>
+        <div class="header-actions">
+            <button class="btn btn-ghost btn-sm no-print" onclick="exportData()" title="Download backup JSON">&#8595; Backup</button>
+            <button class="btn btn-ghost btn-sm no-print" onclick="importData()" title="Restore from backup JSON">&#8593; Import</button>
+            <button class="btn btn-emergency" onclick="openEmergency()">I feel lost</button>
+        </div>
+    </div>
+
+    <!-- Brain State Bar -->
+    <div id="brain-state-bar" class="brain-state-bar">
+        <span class="bs-label">Mode:</span>
+        <div class="bs-buttons">
+            <button class="bs-btn" data-state="normal"      onclick="setBrainState('normal')">Normal</button>
+            <button class="bs-btn" data-state="low-energy"  onclick="setBrainState('low-energy')">Low Energy</button>
+            <button class="bs-btn" data-state="emergency"   onclick="setBrainState('emergency')">Emergency</button>
+            <button class="bs-btn" data-state="deep-focus"  onclick="setBrainState('deep-focus')">Deep Focus</button>
+        </div>
+    </div>
+
+    <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="inbox"  role="tab">Inbox</button>
+        <button class="tab"        data-tab="tasks"  role="tab">Tasks</button>
+        <button class="tab"        data-tab="daily"  role="tab">Daily 3</button>
+        <button class="tab"        data-tab="weekly" role="tab">Weekly</button>
+        <button class="tab"        data-tab="review" role="tab">Review</button>
+        <button class="tab"        data-tab="howto"  role="tab">How to Use</button>
+    </nav>
+</header>
+
+<!-- ===== LOCALHOST NOTICE ===== -->
+<div id="localhost-notice" class="localhost-notice hidden">
+    &#9888;&#65039; Recommended: run this app from <strong>http://localhost:8080</strong>, not by opening index.html directly.
+    In your terminal: <code>python3 -m http.server 8080</code> &mdash; then open <strong>http://localhost:8080</strong>.
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main>
+
+    <!-- INBOX TAB -->
+    <section id="tab-inbox" class="tab-content active" role="tabpanel">
+        <div class="section-header">
+            <h2>Brain Dump Inbox</h2>
+            <p class="hint">Type everything on your mind. Messy is fine. Separate by commas or new lines.</p>
+        </div>
+        <div class="inbox-input-area">
+            <textarea id="dump-input" rows="4"
+                placeholder="Fiat bumper paint, gym, call landlord, YouTube video, house cleaning…"></textarea>
+            <div class="inbox-btn-row">
+                <button class="btn btn-primary" onclick="processDump()">Add to Inbox</button>
+                <button class="btn btn-ai" id="organise-btn" onclick="organiseInbox()">✦ Organise My Brain</button>
+            </div>
+        </div>
+        <div id="inbox-list" class="task-list"></div>
+    </section>
+
+    <!-- TASKS TAB -->
+    <section id="tab-tasks" class="tab-content" role="tabpanel">
+        <div class="section-header tasks-header-row">
+            <h2>All Tasks</h2>
+            <div class="filter-bar">
+                <select id="filter-category" onchange="renderTasks()">
+                    <option value="">All Categories</option>
+                </select>
+                <select id="filter-priority" onchange="renderTasks()">
+                    <option value="">All Priorities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+        </div>
+        <div id="brain-state-notice" class="brain-state-notice hidden"></div>
+        <div id="task-list" class="task-list"></div>
+    </section>
+
+    <!-- DAILY 3 TAB -->
+    <section id="tab-daily" class="tab-content" role="tabpanel">
+        <div class="daily-header-row">
+            <div>
+                <h2>Daily 3 &mdash; <span id="today-date"></span></h2>
+                <p class="hint">Focus only on these today. Everything else can wait.</p>
+            </div>
+            <button class="btn btn-ai btn-sm" onclick="buildTodayForMe()">✦ Build Today For Me</button>
+        </div>
+
+        <div id="overload-warning" class="overload-warning hidden">
+            <span class="ow-icon">⚠️</span>
+            <div>
+                <strong>You are trying to fight too many battles today.</strong>
+                <p>Choose one major mission and defer the rest to the Weekly plan.</p>
+            </div>
+        </div>
+
+        <div class="daily-zone major-zone">
+            <div class="zone-label">1 Major Mission</div>
+            <div class="daily-slot" id="slot-major" data-slot="major">
+                <span class="slot-placeholder">Your #1 most important task today</span>
+            </div>
+        </div>
+
+        <div class="daily-zone medium-zone">
+            <div class="zone-label">2 Medium Tasks</div>
+            <div class="daily-slot" id="slot-medium1" data-slot="medium1">
+                <span class="slot-placeholder">Medium task 1</span>
+            </div>
+            <div class="daily-slot" id="slot-medium2" data-slot="medium2">
+                <span class="slot-placeholder">Medium task 2</span>
+            </div>
+        </div>
+
+        <div class="daily-zone nonneg-zone">
+            <div class="zone-label">3 Non-Negotiables</div>
+            <div class="daily-slot" id="slot-non1" data-slot="non1">
+                <span class="slot-placeholder">Non-negotiable 1</span>
+            </div>
+            <div class="daily-slot" id="slot-non2" data-slot="non2">
+                <span class="slot-placeholder">Non-negotiable 2</span>
+            </div>
+            <div class="daily-slot" id="slot-non3" data-slot="non3">
+                <span class="slot-placeholder">Non-negotiable 3</span>
+            </div>
+        </div>
+
+        <div class="suggested-pool">
+            <h3>Assign from your tasks</h3>
+            <div id="daily-suggestions" class="task-list"></div>
+        </div>
+    </section>
+
+    <!-- WEEKLY TAB -->
+    <section id="tab-weekly" class="tab-content" role="tabpanel">
+        <div class="section-header weekly-header-row">
+            <h2>Weekly Planner</h2>
+            <div class="weekly-btn-group">
+                <button class="btn btn-ai btn-sm" onclick="autoPlanWeek()">✦ Auto Plan Week</button>
+                <button class="btn btn-outline btn-sm no-print" onclick="window.print()">&#128438; Print</button>
+            </div>
+        </div>
+        <div id="weekly-grid" class="weekly-grid"></div>
+        <div class="unassigned-pool no-print">
+            <h3>Unassigned Tasks</h3>
+            <div id="unassigned-list" class="task-list"></div>
+        </div>
+    </section>
+
+    <!-- REVIEW TAB -->
+    <section id="tab-review" class="tab-content" role="tabpanel">
+        <div class="section-header">
+            <h2>Weekly Review</h2>
+            <p class="hint">Week of <span id="week-label"></span></p>
+        </div>
+        <div class="review-form">
+            <div class="form-group">
+                <label for="rv-completed">What did I complete this week?</label>
+                <textarea id="rv-completed" rows="3" placeholder="List your wins…"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="rv-avoided">What did I avoid or procrastinate on?</label>
+                <textarea id="rv-avoided" rows="3" placeholder="Be honest with yourself…"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="rv-stressed">What caused the most stress?</label>
+                <textarea id="rv-stressed" rows="3" placeholder="Identify the source…"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="rv-next">What is my #1 priority for next week?</label>
+                <textarea id="rv-next" rows="3" placeholder="One clear focus…"></textarea>
+            </div>
+            <button class="btn btn-primary" id="save-review-btn" onclick="saveReview()">Save Review</button>
+        </div>
+        <div id="past-reviews"></div>
+    </section>
+
+
+    <!-- HOW TO USE TAB -->
+    <section id="tab-howto" class="tab-content" role="tabpanel">
+
+        <!-- Print-only header -->
+        <div class="howto-print-header">
+            <h1>Stefan Command System &mdash; Quick Guide</h1>
+        </div>
+
+        <div class="howto-top">
+            <div>
+                <h2>How to Use</h2>
+                <p class="hint">Your complete guide to the Stefan Command System.</p>
+            </div>
+            <button class="btn btn-outline btn-sm no-print" onclick="printHowTo()">&#128438; Print Guide</button>
+        </div>
+
+        <!-- 1. Quick Start -->
+        <div class="howto-card">
+            <div class="howto-card-label">Quick Start</div>
+            <h3 class="howto-card-title">When you feel lost or overwhelmed, run this sequence</h3>
+            <div class="qs-steps">
+                <div class="qs-step">
+                    <div class="qs-num">1</div>
+                    <div class="qs-text">
+                        <strong>Open Inbox &mdash; dump everything from your head</strong>
+                        <p>Type all tasks, thoughts, and worries in one go. Messy is fine. Commas or new lines separate them. Do not filter or judge yet.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">2</div>
+                    <div class="qs-text">
+                        <strong>Click "✦ Organise My Brain"</strong>
+                        <p>The system analyses every inbox item and suggests category, priority, energy level, and the next smallest action automatically.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">3</div>
+                    <div class="qs-text">
+                        <strong>Review suggestions &mdash; Accept, Edit, or Skip</strong>
+                        <p>Agree with most? Click "Accept All &rarr; Tasks". Need to adjust one? Click Edit. Don't agree with something? Click Skip &mdash; it stays in inbox.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">4</div>
+                    <div class="qs-text">
+                        <strong>Go to Daily 3 &mdash; click "✦ Build Today For Me"</strong>
+                        <p>The system picks your Major Mission from the highest priority tasks, 2 Medium Tasks, and 3 Non-Negotiables automatically. It respects your Brain State.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">5</div>
+                    <div class="qs-text">
+                        <strong>Start your Major Mission immediately</strong>
+                        <p>Do not reorganise. Do not re-read everything. The plan is set &mdash; execute it. Everything else waits.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Daily Workflow -->
+        <div class="howto-card">
+            <div class="howto-card-label">Daily Workflow</div>
+            <h3 class="howto-card-title">How to run each day with the system</h3>
+            <div class="workflow-grid">
+                <div class="workflow-block">
+                    <div class="workflow-time">Morning <span>10&ndash;15 min</span></div>
+                    <ul class="workflow-list">
+                        <li>Brain dump everything on your mind into Inbox</li>
+                        <li>Click "Organise My Brain" and accept tasks</li>
+                        <li>Go to Daily 3 &rarr; "Build Today For Me"</li>
+                        <li>Start the Major Mission immediately &mdash; do not wait</li>
+                    </ul>
+                </div>
+                <div class="workflow-block">
+                    <div class="workflow-time">During the Day</div>
+                    <ul class="workflow-list">
+                        <li>New thought hits? Add to Inbox only &mdash; do not act on it yet</li>
+                        <li>Do not re-plan or reorganise mid-session</li>
+                        <li>Tick tasks off as you complete them</li>
+                        <li>Feeling overwhelmed? Press "I feel lost"</li>
+                    </ul>
+                </div>
+                <div class="workflow-block">
+                    <div class="workflow-time">Evening <span>5 min</span></div>
+                    <ul class="workflow-list">
+                        <li>Mark remaining tasks: done or deferred?</li>
+                        <li>Write 3 sentences in Weekly Review</li>
+                        <li>Glance at tomorrow &mdash; anything truly urgent?</li>
+                        <li>Close the system. Rest.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Feature Guide -->
+        <div class="howto-card">
+            <div class="howto-card-label">Feature Guide</div>
+            <h3 class="howto-card-title">What each feature does</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📥</div>
+                    <div class="feature-name">Brain Dump Inbox</div>
+                    <p>Dump all thoughts here &mdash; messy is fine. Separate by commas or new lines. This is your input buffer, not your task manager. Nothing in inbox is a commitment yet.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✦</div>
+                    <div class="feature-name">Organise My Brain</div>
+                    <p>Analyses every inbox item using keyword rules. Detects the right category, assigns priority, estimates energy needed, and suggests the next smallest action. Review and accept.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <div class="feature-name">Task Breakdown</div>
+                    <p>Deep-dive on any single task: define the final outcome, the smallest first step, urgency, money impact, stress reduction, deadline, and energy required. A task without a next action is not actionable.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-name">Priority Engine</div>
+                    <p>Scores tasks automatically: Urgent +3 &bull; Makes Money +2 &bull; Reduces Stress +1 &bull; Deadline +1 to +3. Score &ge;4 = High Priority. Score &ge;2 = Medium. Below = Low.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📌</div>
+                    <div class="feature-name">Daily 3</div>
+                    <p>Your only command for today: 1 Major Mission, 2 Medium Tasks, 3 Non-Negotiables. If it is not on this list, it does not exist today. Build it once each morning, then execute it.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <div class="feature-name">Brain State Modes</div>
+                    <p>Tell the system how you feel right now. It adjusts which tasks are surfaced, how the Daily 3 is built, and what is dimmed or highlighted to match your current capacity.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📅</div>
+                    <div class="feature-name">Weekly Planner</div>
+                    <p>Assign tasks to specific days of the week. See the full week at a glance. Print it for your desk or wall. Today's column is always highlighted.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✦</div>
+                    <div class="feature-name">Auto Plan Week</div>
+                    <p>Distributes all tasks intelligently: high priority tasks early in the week, spiritual tasks on Sunday, health tasks on Saturday, maximum 3 tasks per day. Adjusts with one click.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-name">Weekly Review</div>
+                    <p>End-of-week debrief. What did you complete? What did you avoid? What caused stress? What is the single priority for next week? Builds self-awareness over time.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🆘</div>
+                    <div class="feature-name">Emergency Reset</div>
+                    <p>Press "I feel lost" when overwhelmed. The system guides you: stop, drink water, breathe for 60 seconds, write only 3 tasks, choose the smallest one, start for 10 minutes only.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Brain State Modes -->
+        <div class="howto-card">
+            <div class="howto-card-label">Brain State Modes</div>
+            <h3 class="howto-card-title">Match the system to your energy and situation</h3>
+            <div class="mode-grid">
+                <div class="mode-card mode-normal">
+                    <div class="mode-icon">🟢</div>
+                    <div class="mode-name">Normal</div>
+                    <p>Default mode. Full task list visible. All priorities shown normally. Use for regular planning and execution days.</p>
+                </div>
+                <div class="mode-card mode-low-energy">
+                    <div class="mode-icon">🔵</div>
+                    <div class="mode-name">Low Energy</div>
+                    <p>When tired, unwell, or low motivation. High-energy tasks are visually dimmed. The system surfaces lighter work you can actually complete today.</p>
+                </div>
+                <div class="mode-card mode-emergency">
+                    <div class="mode-icon">🔴</div>
+                    <div class="mode-name">Emergency</div>
+                    <p>Everything feels on fire. Only survival, money, and urgent admin tasks are highlighted. Everything else fades out. Triage first, everything else later.</p>
+                </div>
+                <div class="mode-card mode-deep-focus">
+                    <div class="mode-icon">🌑</div>
+                    <div class="mode-name">Deep Focus</div>
+                    <p>One task only. A fullscreen overlay shows your Major Mission and its next action. All distractions are hidden. Work in timed blocks without interruption.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Rules -->
+        <div class="howto-card">
+            <div class="howto-card-label">Rules of the System</div>
+            <h3 class="howto-card-title">These rules protect your attention and momentum</h3>
+            <div class="rules-list">
+                <div class="rule-item">
+                    <div class="rule-num">1</div>
+                    <p><strong>Do not fight more than one major battle per day.</strong> One major mission. Everything else supports it or waits until tomorrow.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-num">2</div>
+                    <p><strong>If everything feels urgent, use Emergency Reset.</strong> Urgency is often a feeling, not a fact. Reset before you react. Breathe first.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-num">3</div>
+                    <p><strong>Money and survival tasks come before cosmetic tasks.</strong> Rent, income, bills, and urgent admin are never optional. Decoration and nice-to-haves are.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-num">4</div>
+                    <p><strong>A task is not ready until it has a smallest next action.</strong> "Fix the car" is not a task. "Call the garage to book an appointment" is a task.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-num">5</div>
+                    <p><strong>Daily 3 is the command for the day.</strong> Build it once in the morning. Execute it. Do not rebuild or re-plan mid-day &mdash; it kills momentum.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-num">6</div>
+                    <p><strong>Everything else waits.</strong> Inbox items are not tasks yet. They wait until you decide they matter enough to plan. The inbox holds them safely.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Example -->
+        <div class="howto-card">
+            <div class="howto-card-label">Example</div>
+            <h3 class="howto-card-title">From messy dump to clear daily command</h3>
+
+            <div class="example-dump-label">You type this into Inbox:</div>
+            <div class="example-dump">
+                &ldquo;UC account, bumper paint, gym, YouTube video, reply LinkedIn, clean kitchen&rdquo;
+            </div>
+
+            <div class="example-arrow">&#8595; Click "Organise My Brain" then "Build Today For Me"</div>
+
+            <div class="example-output">
+                <div class="example-slot major-eg">
+                    <div class="example-slot-label">Major Mission</div>
+                    <div class="example-slot-task"><strong>UC account</strong> &mdash; log in and check messages and to-do tasks</div>
+                </div>
+                <div class="example-slot medium-eg">
+                    <div class="example-slot-label">Medium Task 1</div>
+                    <div class="example-slot-task"><strong>Fiat bumper paint</strong> &mdash; clean the area and tape around the damage</div>
+                </div>
+                <div class="example-slot medium-eg">
+                    <div class="example-slot-label">Medium Task 2</div>
+                    <div class="example-slot-task"><strong>Reply LinkedIn</strong> &mdash; reply to one message or send one connection request</div>
+                </div>
+                <div class="example-slot nonneg-eg">
+                    <div class="example-slot-label">Non-Negotiable 1</div>
+                    <div class="example-slot-task">Eat and hydrate properly today</div>
+                </div>
+                <div class="example-slot nonneg-eg">
+                    <div class="example-slot-label">Non-Negotiable 2</div>
+                    <div class="example-slot-task">Move your body &mdash; gym (get dressed and leave the house)</div>
+                </div>
+                <div class="example-slot nonneg-eg">
+                    <div class="example-slot-label">Non-Negotiable 3</div>
+                    <div class="example-slot-task">Spiritual grounding &mdash; prayer or quiet time</div>
+                </div>
+                <div class="example-deferred">
+                    Deferred to another day &mdash; YouTube video, clean kitchen. They are saved in Tasks and will be planned into the weekly schedule.
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Recurring Tasks -->
+        <div class="howto-card">
+            <div class="howto-card-label">Recurring Tasks</div>
+            <h3 class="howto-card-title">Set up tasks that repeat automatically</h3>
+            <div class="qs-steps">
+                <div class="qs-step">
+                    <div class="qs-num">1</div>
+                    <div class="qs-text">
+                        <strong>Open Task Breakdown for any task</strong>
+                        <p>Click "Break Down" from the Inbox, or "Edit" on any existing task in the Tasks tab. Scroll to the "Recurring Task" section at the bottom.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">2</div>
+                    <div class="qs-text">
+                        <strong>Check "Repeat this task" and choose a frequency</strong>
+                        <p>Daily (every day), Weekdays (Mon&ndash;Fri), Weekly (pick one day), or Custom (pick any combination). For Weekly and Custom, tick the specific days.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">3</div>
+                    <div class="qs-text">
+                        <strong>Recurring tasks appear in Daily 3 suggestions automatically</strong>
+                        <p>On the correct days, the task surfaces in your suggestion pool and in "Build Today For Me". It shows a 🔁 badge with its schedule.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">4</div>
+                    <div class="qs-text">
+                        <strong>Tick it done &mdash; it resets the next day</strong>
+                        <p>Recurring tasks use daily completion tracking. Ticking one done marks it for today only &mdash; it dims and moves below active tasks. Tomorrow it reappears fresh. It never permanently disappears.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">5</div>
+                    <div class="qs-text">
+                        <strong>Pause with ⏸ &mdash; resume with ▶</strong>
+                        <p>Use pause when you need to skip a period without deleting the task. A paused task shows ⏸ Paused and won't appear in Daily 3 until resumed.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. Data Backup -->
+        <div class="howto-card">
+            <div class="howto-card-label">Data Backup</div>
+            <h3 class="howto-card-title">Keep your data safe with export and import</h3>
+            <div class="qs-steps">
+                <div class="qs-step">
+                    <div class="qs-num">1</div>
+                    <div class="qs-text">
+                        <strong>Click &ldquo;&#8595; Backup&rdquo; in the header</strong>
+                        <p>Downloads a file named <em>stefan-command-system-backup-YYYY-MM-DD.json</em> with all your tasks, daily plan, weekly plan, and reviews. Do this regularly.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">2</div>
+                    <div class="qs-text">
+                        <strong>Click &ldquo;&#8593; Import&rdquo; to restore from a backup</strong>
+                        <p>Select a previously downloaded JSON backup file. All current data will be replaced. A confirmation prompt appears before anything is overwritten.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">3</div>
+                    <div class="qs-text">
+                        <strong>Run from localhost for reliable storage</strong>
+                        <p>Opening index.html directly uses <code>file://</code> which some browsers clear on restart. For reliable data: open a terminal in the project folder and run <code>python3 -m http.server 8080</code>, then open <strong>http://localhost:8080</strong> in your browser. A yellow warning appears if you are on <code>file://</code>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. Subtasks -->
+        <div class="howto-card">
+            <div class="howto-card-label">Subtasks</div>
+            <h3 class="howto-card-title">Break any task into small, trackable steps</h3>
+            <div class="qs-steps">
+                <div class="qs-step">
+                    <div class="qs-num">1</div>
+                    <div class="qs-text">
+                        <strong>Open Task Breakdown for any task</strong>
+                        <p>Click &ldquo;Break Down&rdquo; from the Inbox, or &ldquo;Edit&rdquo; from the Tasks tab. Scroll to the Subtasks section at the bottom of the modal.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">2</div>
+                    <div class="qs-text">
+                        <strong>Click &ldquo;&#10022; Suggest Subtasks&rdquo; for automatic steps</strong>
+                        <p>The system detects the task type and suggests relevant subtasks — car paint, Student Finance, UC account check, YouTube video, LinkedIn, gym, and more. A generic fallback is used for everything else.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">3</div>
+                    <div class="qs-text">
+                        <strong>Add your own with &ldquo;+ Add Subtask&rdquo;</strong>
+                        <p>Each subtask has a description, a checkbox, and an optional time estimate. Edit or remove subtasks freely before saving.</p>
+                    </div>
+                </div>
+                <div class="qs-step">
+                    <div class="qs-num">4</div>
+                    <div class="qs-text">
+                        <strong>Tick subtasks off as you work</strong>
+                        <p>Open the task breakdown at any time to tick individual subtasks. Every task card shows progress &mdash; for example &ldquo;2/5 subtasks complete&rdquo;. When all subtasks are done the progress indicator turns green.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+</main>
+
+<div id="toast" class="toast" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
