@@ -113,16 +113,20 @@ function hydrate() {
 // ===== DATA EXPORT / IMPORT =====
 
 function exportData() {
-    const date = new Date().toISOString().slice(0, 10);
+    const now  = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const hhmm = now.toTimeString().slice(0, 5).replace(':', '');
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `stefan-recovery-os-backup-${date}.json`;
+    a.download = `stefan-recovery-os-backup-${date}-${hhmm}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    localStorage.setItem('last_backup_date', date);
+    renderBackupStatus();
     showToast('Backup downloaded');
 }
 
@@ -143,7 +147,14 @@ function importData() {
                     ...{ major: null, medium1: null, medium2: null, non1: null, non2: null, non3: null },
                     ...(state.daily3 || {}),
                 };
-                state.brainState = state.brainState || 'normal';
+                state.brainState     = state.brainState     || 'normal';
+                state.recoveryState  = state.recoveryState  || 'stable';
+                state.jobs           = state.jobs           || [];
+                state.recoveryDashboard = {
+                    date: null, jobApps: 0, moneyAction: false,
+                    movement: false, emotionalBoundary: false, importantTask: false,
+                    ...(state.recoveryDashboard || {}),
+                };
                 persist();
                 document.body.dataset.mode = state.brainState;
                 renderBrainStateBar();
@@ -1959,6 +1970,35 @@ function setJobTagFilter(tag) {
     renderJobs();
 }
 
+// ===== BACKUP STATUS & AUTO-BACKUP =====
+
+function renderBackupStatus() {
+    const el = document.getElementById('backup-status');
+    if (!el) return;
+    const last = localStorage.getItem('last_backup_date');
+    const today = todayKey();
+    if (!last) {
+        el.textContent = 'Last backup: never';
+        el.className = 'backup-status backup-never';
+    } else if (last === today) {
+        el.textContent = 'Last backup: today';
+        el.className = 'backup-status backup-today';
+    } else {
+        el.textContent = `Last backup: ${last}`;
+        el.className = 'backup-status backup-old';
+    }
+}
+
+function scheduleAutoBackup() {
+    const last = localStorage.getItem('last_backup_date');
+    if (last === todayKey()) return;
+    setTimeout(() => {
+        if (localStorage.getItem('last_backup_date') !== todayKey()) {
+            exportData();
+        }
+    }, 30000);
+}
+
 // ===== INIT =====
 
 function init() {
@@ -2003,6 +2043,8 @@ function init() {
         document.body.classList.remove('print-howto');
     });
 
+    renderBackupStatus();
+    scheduleAutoBackup();
     renderRecoveryDashboard();
 }
 

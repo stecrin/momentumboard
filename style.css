@@ -1557,6 +1557,19 @@ main {
 /* ===== PAST REVIEWS HEADING ===== */
 .past-reviews-heading { margin-bottom: 14px; margin-top: 8px; }
 
+/* ===== BACKUP STATUS ===== */
+.backup-status {
+    font-size: 0.72rem;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 3px 8px;
+    border-radius: 99px;
+    border: 1px solid transparent;
+}
+.backup-today { color: var(--accent);     background: #edf7f3; border-color: #b8dfd0; }
+.backup-old   { color: var(--warning);    background: #fff8e8; border-color: #f0d880; }
+.backup-never { color: var(--danger);     background: #fff0f0; border-color: #f0bebe; }
+
 /* ===== JOB RECOVERY ===== */
 
 /* Daily Execution Panel */
