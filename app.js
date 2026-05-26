@@ -40,15 +40,25 @@ const DEFAULT_NON_NEG = [
     { text: 'Spiritual grounding — prayer or quiet time',  category: 'Spiritual',      energy: 'low',    reducesStress: true },
 ];
 
+const RECOVERY_STATE_GUIDANCE = {
+    stable:       'System stable. Execute your daily plan consistently.',
+    pressured:    'Under pressure. Prioritise income and debt actions first. Reduce other load.',
+    overwhelmed:  'Overwhelmed. One task at a time. Use Emergency Reset if needed.',
+    recovery:     'In recovery mode. Daily minimum standard only. Be gentle with yourself.',
+    'deep-focus': 'Deep focus engaged. One mission. No distractions. Execute.',
+};
+
 // ===== STATE =====
 
 let state = {
     inbox:      [],
     tasks:      [],
+    jobs:       [],
     daily3:     { major: null, medium1: null, medium2: null, non1: null, non2: null, non3: null },
     weeklyMap:  {},
     reviews:    [],
     brainState: 'normal',
+    recoveryState: 'stable',
     recoveryDashboard: {
         date: null,
         jobApps: 0,
@@ -64,6 +74,8 @@ let breakdownSource    = 'inbox';
 let timerInterval      = null;
 let organisePreview    = []; // in-memory only, not persisted
 let currentSubtasks    = []; // subtasks being edited in the breakdown modal
+let currentJobId       = null;
+let jobTagFilter       = '';
 
 // ===== STORAGE =====
 
@@ -82,6 +94,8 @@ function hydrate() {
             ...(state.daily3 || {}),
         };
         state.brainState = state.brainState || 'normal';
+        state.recoveryState = state.recoveryState || 'stable';
+        state.jobs = state.jobs || [];
         state.recoveryDashboard = {
             date: null,
             jobApps: 0,
@@ -135,7 +149,7 @@ function importData() {
                 renderBrainStateBar();
                 const activeTab = document.querySelector('.tab.active');
                 if (activeTab) {
-                    const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, review: renderReview };
+                    const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, review: renderReview, jobs: renderJobs };
                     const fn = renders[activeTab.dataset.tab];
                     if (fn) fn();
                 }
@@ -647,7 +661,7 @@ function detectWhyMatters(task) {
 function switchTab(name) {
     document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.tab-content').forEach(s => s.classList.toggle('active', s.id === `tab-${name}`));
-    const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, review: renderReview };
+    const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, review: renderReview, jobs: renderJobs };
     if (renders[name]) renders[name]();
 }
 
@@ -671,7 +685,7 @@ function renderInbox() {
     organiseBtn.style.display = state.inbox.length > 0 ? '' : 'none';
 
     if (state.inbox.length === 0) {
-        list.innerHTML = `<div class="empty-state"><div class="empty-icon">📥</div><p>Inbox clear. Dump your thoughts above.</p></div>`;
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">📥</div><p>Nothing in the queue. When thoughts, tasks, or worries surface, add them here — then organise when you're ready.</p></div>`;
         return;
     }
     list.innerHTML = state.inbox.map(item => `
@@ -1039,7 +1053,7 @@ function renderTasks() {
 
     const list = document.getElementById('task-list');
     if (all.length === 0) {
-        list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>No tasks yet. Use the Inbox to add some.</p></div>`;
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">&#10003;</div><p>No tasks yet. Go to Inbox, add your thoughts, then organise them into tasks.</p></div>`;
         return;
     }
     list.innerHTML = all.map(t => taskCardHTML(t, true)).join('');
@@ -1103,7 +1117,8 @@ function taskCardHTML(task, showActions) {
     const stDone    = subtasks.filter(s => s.completed).length;
     const stTotal   = subtasks.length;
 
-    const cardClasses = `task-card pri-${pri} energy-${en}${task.completed ? ' completed' : ''}${doneToday ? ' done-today' : ''}`;
+    const isCritical = task.urgent || ['Job / Income', 'Rent / Debt', 'Survival / Money'].includes(task.category);
+    const cardClasses = `task-card pri-${pri} energy-${en}${task.completed ? ' completed' : ''}${doneToday ? ' done-today' : ''}${isCritical ? ' cat-critical' : ''}`;
     return `
         <div class="${cardClasses}">
             <div class="priority-bar"></div>
@@ -1211,7 +1226,7 @@ function renderDailySuggestions() {
     const container = document.getElementById('daily-suggestions');
 
     if (pool.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem">No tasks to assign — add more through the Inbox.</p>';
+        container.innerHTML = '<p class="empty-pool-msg">No tasks to assign yet. Add tasks via Inbox first, then return here to build your daily plan.</p>';
         return;
     }
 
@@ -1449,23 +1464,29 @@ function renderReview() {
     document.getElementById('week-label').textContent = getWeekLabel();
     const key     = getWeekKey();
     const current = state.reviews.find(r => r.week === key);
-    document.getElementById('rv-completed').value = current?.completed || '';
-    document.getElementById('rv-avoided').value   = current?.avoided   || '';
-    document.getElementById('rv-stressed').value  = current?.stressed  || '';
-    document.getElementById('rv-next').value      = current?.next      || '';
+    document.getElementById('rv-job-apps-week').value  = current?.jobAppsWeek   || '';
+    document.getElementById('rv-finance').value        = current?.finance        || '';
+    document.getElementById('rv-completed').value      = current?.completed      || '';
+    document.getElementById('rv-avoidance').value      = current?.avoidance      || current?.avoided    || '';
+    document.getElementById('rv-destabilised').value   = current?.destabilised   || current?.stressed   || '';
+    document.getElementById('rv-boundaries').value     = current?.boundaries     || '';
+    document.getElementById('rv-mission').value        = current?.mission        || current?.next       || '';
     renderPastReviews();
 }
 
 function saveReview() {
     const key   = getWeekKey();
     const entry = {
-        week:      key,
-        weekLabel: getWeekLabel(),
-        completed: document.getElementById('rv-completed').value,
-        avoided:   document.getElementById('rv-avoided').value,
-        stressed:  document.getElementById('rv-stressed').value,
-        next:      document.getElementById('rv-next').value,
-        savedAt:   new Date().toISOString(),
+        week:          key,
+        weekLabel:     getWeekLabel(),
+        jobAppsWeek:   document.getElementById('rv-job-apps-week').value,
+        finance:       document.getElementById('rv-finance').value,
+        completed:     document.getElementById('rv-completed').value,
+        avoidance:     document.getElementById('rv-avoidance').value,
+        destabilised:  document.getElementById('rv-destabilised').value,
+        boundaries:    document.getElementById('rv-boundaries').value,
+        mission:       document.getElementById('rv-mission').value,
+        savedAt:       new Date().toISOString(),
     };
     const idx = state.reviews.findIndex(r => r.week === key);
     if (idx >= 0) state.reviews[idx] = entry;
@@ -1481,13 +1502,16 @@ function renderPastReviews() {
     const container = document.getElementById('past-reviews');
     if (past.length === 0) { container.innerHTML = ''; return; }
 
-    container.innerHTML = '<h3 style="margin-bottom:14px">Past Reviews</h3>' + past.map(r => `
+    container.innerHTML = '<h3 class="past-reviews-heading">Past Reviews</h3>' + past.map(r => `
         <div class="past-review-card">
             <h4>${esc(r.weekLabel)}</h4>
-            ${r.completed ? `<div class="review-q"><strong>Completed</strong><p>${esc(r.completed)}</p></div>` : ''}
-            ${r.avoided   ? `<div class="review-q"><strong>Avoided</strong><p>${esc(r.avoided)}</p></div>` : ''}
-            ${r.stressed  ? `<div class="review-q"><strong>Stress source</strong><p>${esc(r.stressed)}</p></div>` : ''}
-            ${r.next      ? `<div class="review-q"><strong>Next priority</strong><p>${esc(r.next)}</p></div>` : ''}
+            ${r.jobAppsWeek ? `<div class="review-q"><strong>Job applications</strong><p>${esc(r.jobAppsWeek)}</p></div>` : ''}
+            ${r.finance      ? `<div class="review-q"><strong>Financial actions</strong><p>${esc(r.finance)}</p></div>` : ''}
+            ${r.completed    ? `<div class="review-q"><strong>Completed</strong><p>${esc(r.completed)}</p></div>` : ''}
+            ${(r.avoidance || r.avoided) ? `<div class="review-q"><strong>Biggest avoidance</strong><p>${esc(r.avoidance || r.avoided)}</p></div>` : ''}
+            ${(r.destabilised || r.stressed) ? `<div class="review-q"><strong>Emotional destabilisation</strong><p>${esc(r.destabilised || r.stressed)}</p></div>` : ''}
+            ${r.boundaries   ? `<div class="review-q"><strong>Boundaries protected</strong><p>${esc(r.boundaries)}</p></div>` : ''}
+            ${(r.mission || r.next) ? `<div class="review-q"><strong>Next mission</strong><p>${esc(r.mission || r.next)}</p></div>` : ''}
         </div>
     `).join('');
 }
@@ -1504,7 +1528,7 @@ function setBrainState(newState) {
     // Re-render active tab to apply mode changes
     const activeTab = document.querySelector('.tab.active');
     if (activeTab) {
-        const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly };
+        const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, jobs: renderJobs };
         const fn = renders[activeTab.dataset.tab];
         if (fn) fn();
     }
@@ -1523,7 +1547,7 @@ function updateDeepFocusOverlay() {
         return;
     }
     const major = state.daily3.major ? getTask(state.daily3.major) : null;
-    document.getElementById('df-task-name').textContent   = major ? major.text : 'Go to Daily 3 and set your Major Mission first';
+    document.getElementById('df-task-name').textContent   = major ? major.text : 'Go to Today\'s Plan and set your Major Mission first';
     document.getElementById('df-next-action').textContent = major?.nextAction || '';
     overlay.classList.remove('hidden');
 }
@@ -1624,6 +1648,7 @@ function getDashToday() {
 function renderRecoveryDashboard() {
     const d = getDashToday();
 
+    // Today's Recovery Focus
     const major = state.daily3.major ? getTask(state.daily3.major) : null;
     const focusEl = document.getElementById('dash-focus-text');
     if (focusEl) {
@@ -1633,6 +1658,7 @@ function renderRecoveryDashboard() {
         focusEl.classList.toggle('dash-focus-set', !!major);
     }
 
+    // Job apps counter
     const jobCount = document.getElementById('dash-job-count');
     if (jobCount) {
         jobCount.textContent = `${d.jobApps} / 3`;
@@ -1640,6 +1666,7 @@ function renderRecoveryDashboard() {
     }
     updateDashItem('dash-jobs', d.jobApps >= 3);
 
+    // Toggle items
     updateDashToggle('dash-money-btn', d.moneyAction, 'Not done', 'Done');
     updateDashItem('dash-money-item', d.moneyAction);
 
@@ -1651,6 +1678,23 @@ function renderRecoveryDashboard() {
 
     updateDashToggle('dash-task-btn', d.importantTask, 'Not done', 'Done');
     updateDashItem('dash-task-item', d.importantTask);
+
+    // Recovery Score
+    const score = [d.jobApps >= 3, d.moneyAction, d.movement, d.emotionalBoundary, d.importantTask].filter(Boolean).length;
+    const scoreEl = document.getElementById('dash-score');
+    if (scoreEl) {
+        scoreEl.textContent = score;
+        const scoreLine = document.getElementById('dash-score-line');
+        if (scoreLine) scoreLine.classList.toggle('dash-score-perfect', score === 5);
+    }
+
+    // Recovery State
+    const rs = state.recoveryState || 'stable';
+    document.querySelectorAll('.rs-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.state === rs);
+    });
+    const guidanceEl = document.getElementById('rs-guidance');
+    if (guidanceEl) guidanceEl.textContent = RECOVERY_STATE_GUIDANCE[rs] || '';
 }
 
 function updateDashToggle(id, done, labelOff, labelOn) {
@@ -1693,6 +1737,228 @@ function toggleDashCheck(field) {
     renderRecoveryDashboard();
 }
 
+function setRecoveryState(rs) {
+    state.recoveryState = rs;
+    persist();
+    renderRecoveryDashboard();
+}
+
+// ===== JOB RECOVERY =====
+
+const JOB_STATUS_ORDER = { Offer: 0, Interview: 1, Applied: 2, Saved: 3, Rejected: 4 };
+
+function renderJobs() {
+    const d = getDashToday();
+    const countEl = document.getElementById('job-daily-count');
+    if (countEl) {
+        countEl.textContent = `${d.jobApps} / 3`;
+        countEl.classList.toggle('counter-done', d.jobApps >= 3);
+    }
+    const barEl = document.getElementById('job-daily-bar');
+    if (barEl) {
+        const pct = Math.min(100, Math.round((d.jobApps / 3) * 100));
+        barEl.innerHTML = `<div class="job-daily-fill" style="width:${pct}%"></div>`;
+    }
+
+    const statusFilter = document.getElementById('job-status-filter')?.value || '';
+    let jobs = [...state.jobs];
+    if (jobTagFilter) jobs = jobs.filter(j => (j.tags || []).includes(jobTagFilter));
+    if (statusFilter) jobs = jobs.filter(j => j.status === statusFilter);
+    jobs.sort((a, b) => (JOB_STATUS_ORDER[a.status] ?? 3) - (JOB_STATUS_ORDER[b.status] ?? 3));
+
+    const list = document.getElementById('job-list');
+    if (!list) return;
+
+    if (state.jobs.length === 0) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><p>No jobs saved yet. Use Quick Capture above to add your first opportunity.</p></div>`;
+        return;
+    }
+    if (jobs.length === 0) {
+        list.innerHTML = `<div class="empty-state"><p>No jobs match the current filter. Clear filters to see all entries.</p></div>`;
+        return;
+    }
+    list.innerHTML = jobs.map(j => jobCardHTML(j)).join('');
+}
+
+function jobCardHTML(j) {
+    const tags = j.tags || [];
+    const checklist = [
+        { key: 'cvAdapted',           label: 'CV adapted' },
+        { key: 'linkedinReviewed',    label: 'LinkedIn reviewed' },
+        { key: 'coverLetterPrepared', label: 'Cover letter prepared' },
+        { key: 'followUpPlanned',     label: 'Follow-up planned' },
+        { key: 'applied',             label: 'Applied' },
+    ];
+    const doneCount = checklist.filter(c => j[c.key]).length;
+    const today = todayKey();
+    const isOverdue = j.followUpDate && j.followUpDate < today && j.status !== 'Rejected' && j.status !== 'Offer';
+
+    return `
+<div class="job-card status-${j.status.toLowerCase()}" data-id="${esc(j.id)}">
+    <div class="job-card-top">
+        <div class="job-card-main">
+            <div class="job-card-title">${esc(j.title)}</div>
+            <div class="job-card-meta">
+                ${j.company ? `<span class="job-company">${esc(j.company)}</span>` : ''}
+                ${j.location ? `<span class="job-location">📍 ${esc(j.location)}</span>` : ''}
+                ${j.salary ? `<span class="job-salary">${esc(j.salary)}</span>` : ''}
+            </div>
+            <div class="job-card-badges">
+                <span class="job-status-badge jstatus-${j.status.toLowerCase()}">${esc(j.status)}</span>
+                <span class="job-match">&#9733; ${j.matchScore || 3}/5</span>
+                ${tags.map(t => `<span class="job-tag">${esc(t)}</span>`).join('')}
+                ${j.followUpDate ? `<span class="job-followup${isOverdue ? ' overdue' : ''}">&#128197; ${esc(j.followUpDate)}</span>` : ''}
+            </div>
+        </div>
+        <div class="job-card-actions">
+            ${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">&#8599;</a>` : ''}
+            <button class="btn btn-outline btn-sm" onclick="openJobModal('${esc(j.id)}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteJob('${esc(j.id)}')">&#x2715;</button>
+        </div>
+    </div>
+
+    <div class="job-status-row">
+        ${['Saved','Applied','Interview','Rejected','Offer'].map(s =>
+            `<button class="job-status-pill${j.status === s ? ' active status-' + s.toLowerCase() : ''}" onclick="updateJobStatus('${esc(j.id)}','${s}')">${s}</button>`
+        ).join('')}
+    </div>
+
+    <details class="job-checklist">
+        <summary>CV Checklist <span class="checklist-count">${doneCount}/5</span></summary>
+        <div class="job-checklist-items">
+            ${checklist.map(c => `
+                <label class="job-check-item${j[c.key] ? ' done' : ''}">
+                    <input type="checkbox"${j[c.key] ? ' checked' : ''} onchange="toggleJobCheck('${esc(j.id)}','${c.key}',this.checked)">
+                    <span>${c.label}</span>
+                </label>`).join('')}
+        </div>
+    </details>
+
+    ${j.notes ? `<div class="job-notes">${esc(j.notes)}</div>` : ''}
+</div>`;
+}
+
+function quickAddJob() {
+    const titleEl = document.getElementById('jq-title');
+    const title = titleEl?.value.trim();
+    if (!title) { showToast('Enter a job title first'); return; }
+    const company = document.getElementById('jq-company')?.value.trim() || '';
+    const url     = document.getElementById('jq-url')?.value.trim() || '';
+    const job = {
+        id: uid(), title, company, salary: '', location: '', url,
+        status: 'Saved', matchScore: 3, notes: '', followUpDate: '',
+        tags: [], cvAdapted: false, linkedinReviewed: false,
+        coverLetterPrepared: false, followUpPlanned: false, applied: false,
+        createdAt: new Date().toISOString(),
+    };
+    state.jobs.unshift(job);
+    persist();
+    titleEl.value = '';
+    if (document.getElementById('jq-company')) document.getElementById('jq-company').value = '';
+    if (document.getElementById('jq-url'))     document.getElementById('jq-url').value = '';
+    renderJobs();
+    showToast('Job saved');
+}
+
+function openJobModal(id) {
+    currentJobId = id;
+    const j = id ? state.jobs.find(j => j.id === id) : null;
+    document.getElementById('job-modal-title').textContent = id ? 'Edit Job Entry' : 'Add Job Entry';
+    document.getElementById('jm-title').value     = j?.title        || '';
+    document.getElementById('jm-company').value   = j?.company      || '';
+    document.getElementById('jm-salary').value    = j?.salary       || '';
+    document.getElementById('jm-location').value  = j?.location     || '';
+    document.getElementById('jm-url').value       = j?.url          || '';
+    document.getElementById('jm-status').value    = j?.status       || 'Saved';
+    document.getElementById('jm-match').value     = j?.matchScore   || 3;
+    document.getElementById('jm-followup').value  = j?.followUpDate || '';
+    document.getElementById('jm-notes').value     = j?.notes        || '';
+    document.getElementById('jm-id').value        = id              || '';
+    document.querySelectorAll('[name="jm-tag"]').forEach(cb => {
+        cb.checked = (j?.tags || []).includes(cb.value);
+    });
+    showModal('job-modal');
+}
+
+function closeJobModal() {
+    hideModal('job-modal');
+    currentJobId = null;
+}
+
+function saveJobModal() {
+    const title = document.getElementById('jm-title').value.trim();
+    if (!title) { showToast('Job title is required'); return; }
+    const tags = [...document.querySelectorAll('[name="jm-tag"]:checked')].map(cb => cb.value);
+    const id   = document.getElementById('jm-id').value || uid();
+    const jobData = {
+        id, title,
+        company:     document.getElementById('jm-company').value.trim(),
+        salary:      document.getElementById('jm-salary').value.trim(),
+        location:    document.getElementById('jm-location').value.trim(),
+        url:         document.getElementById('jm-url').value.trim(),
+        status:      document.getElementById('jm-status').value,
+        matchScore:  parseInt(document.getElementById('jm-match').value, 10),
+        followUpDate: document.getElementById('jm-followup').value,
+        notes:       document.getElementById('jm-notes').value.trim(),
+        tags,
+    };
+    const existing = state.jobs.find(j => j.id === id);
+    if (existing) {
+        Object.assign(existing, jobData);
+    } else {
+        state.jobs.unshift({
+            ...jobData,
+            cvAdapted: false, linkedinReviewed: false,
+            coverLetterPrepared: false, followUpPlanned: false, applied: false,
+            createdAt: new Date().toISOString(),
+        });
+    }
+    persist();
+    closeJobModal();
+    renderJobs();
+    showToast(existing ? 'Job updated' : 'Job added');
+}
+
+function deleteJob(id) {
+    if (!confirm('Remove this job entry?')) return;
+    state.jobs = state.jobs.filter(j => j.id !== id);
+    persist();
+    renderJobs();
+    showToast('Job removed');
+}
+
+function updateJobStatus(id, status) {
+    const j = state.jobs.find(j => j.id === id);
+    if (!j) return;
+    j.status = status;
+    persist();
+    renderJobs();
+}
+
+function toggleJobCheck(id, field, checked) {
+    const j = state.jobs.find(j => j.id === id);
+    if (!j) return;
+    j[field] = checked;
+    persist();
+    const card = document.querySelector(`.job-card[data-id="${id}"]`);
+    if (card) {
+        const fields = ['cvAdapted','linkedinReviewed','coverLetterPrepared','followUpPlanned','applied'];
+        const count = fields.filter(f => j[f]).length;
+        const countEl = card.querySelector('.checklist-count');
+        if (countEl) countEl.textContent = `${count}/5`;
+        const row = card.querySelector(`input[onchange*="'${field}'"]`)?.closest('.job-check-item');
+        if (row) row.classList.toggle('done', checked);
+    }
+}
+
+function setJobTagFilter(tag) {
+    jobTagFilter = tag;
+    document.querySelectorAll('.jf-tag').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tag === tag);
+    });
+    renderJobs();
+}
+
 // ===== INIT =====
 
 function init() {
@@ -1712,19 +1978,20 @@ function init() {
     });
 
     // Close modals on backdrop click
-    ['emergency-modal', 'breakdown-modal', 'organise-modal'].forEach(id => {
+    ['emergency-modal', 'breakdown-modal', 'organise-modal', 'job-modal'].forEach(id => {
         document.getElementById(id).addEventListener('click', e => {
             if (e.target !== e.currentTarget) return;
             if (id === 'emergency-modal') closeEmergency(false);
             else if (id === 'breakdown-modal') closeBreakdown();
             else if (id === 'organise-modal') closeOrganise();
+            else if (id === 'job-modal') closeJobModal();
         });
     });
 
     document.getElementById('start-timer-btn').addEventListener('click', startBreathingTimer);
 
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeBreakdown(); closeEmergency(false); closeOrganise(); }
+        if (e.key === 'Escape') { closeBreakdown(); closeEmergency(false); closeOrganise(); closeJobModal(); }
         if (e.key === 'Enter' && e.ctrlKey && document.activeElement.id === 'dump-input') processDump();
     });
 

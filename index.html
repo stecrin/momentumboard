@@ -13,7 +13,7 @@
     <div class="df-content">
         <div class="df-badge">DEEP FOCUS MODE</div>
         <h2 class="df-task" id="df-task-name">No major mission set</h2>
-        <p class="df-hint">All distractions hidden. Do this one thing first.</p>
+        <p class="df-hint">One mission. No distractions. Complete this before anything else.</p>
         <div class="df-next" id="df-next-action"></div>
         <button class="btn btn-outline" onclick="setBrainState('normal')">Exit Deep Focus</button>
     </div>
@@ -175,6 +175,7 @@
         <button class="tab"        data-tab="daily"     role="tab">Today</button>
         <button class="tab"        data-tab="weekly"    role="tab">Weekly</button>
         <button class="tab"        data-tab="review"    role="tab">Review</button>
+        <button class="tab"        data-tab="jobs"      role="tab">Job Recovery</button>
         <button class="tab"        data-tab="howto"     role="tab">How to Use</button>
     </nav>
 </header>
@@ -194,6 +195,19 @@
         <div class="phase-banner">
             <div class="phase-tag">Phase 1</div>
             <span class="phase-text">Stabilisation &mdash; Stop chaos. Reduce overwhelm. Regain control.</span>
+        </div>
+
+        <!-- Recovery State -->
+        <div class="dashboard-card recovery-state-card">
+            <div class="dashboard-card-label">Current Recovery State</div>
+            <div class="recovery-state-options">
+                <button class="rs-btn active" data-state="stable"      onclick="setRecoveryState('stable')">Stable</button>
+                <button class="rs-btn"        data-state="pressured"   onclick="setRecoveryState('pressured')">Pressured</button>
+                <button class="rs-btn"        data-state="overwhelmed" onclick="setRecoveryState('overwhelmed')">Overwhelmed</button>
+                <button class="rs-btn"        data-state="recovery"    onclick="setRecoveryState('recovery')">Recovery</button>
+                <button class="rs-btn"        data-state="deep-focus"  onclick="setRecoveryState('deep-focus')">Deep Focus</button>
+            </div>
+            <div class="rs-guidance" id="rs-guidance">System stable. Execute your daily plan consistently.</div>
         </div>
 
         <!-- Today's Recovery Focus -->
@@ -277,6 +291,11 @@
                 </div>
 
             </div>
+
+            <div class="dash-score-line" id="dash-score-line">
+                Recovery Score: <span id="dash-score">0</span> / 5
+            </div>
+
         </div>
 
         <!-- Recovery Rules -->
@@ -297,11 +316,11 @@
     <section id="tab-inbox" class="tab-content" role="tabpanel">
         <div class="section-header">
             <h2>Brain Dump Inbox</h2>
-            <p class="hint">Type everything on your mind. Messy is fine. Separate by commas or new lines.</p>
+            <p class="hint">Empty your mind here. Thoughts, tasks, worries &mdash; all of it. Messy is fine. Nothing here is a commitment yet.</p>
         </div>
         <div class="inbox-input-area">
             <textarea id="dump-input" rows="4"
-                placeholder="Fiat bumper paint, gym, call landlord, YouTube video, house cleaning…"></textarea>
+                placeholder="job application, call landlord, gym, pay phone bill, uni assignment, sell car&hellip;"></textarea>
             <div class="inbox-btn-row">
                 <button class="btn btn-primary" onclick="processDump()">Add to Inbox</button>
                 <button class="btn btn-ai" id="organise-btn" onclick="organiseInbox()">✦ Organise My Brain</button>
@@ -349,24 +368,33 @@
         </div>
 
         <div class="daily-zone major-zone">
-            <div class="zone-label">1 Major Mission</div>
+            <div class="zone-header">
+                <div class="zone-label">Major Mission</div>
+                <div class="zone-sub">One task. Highest priority. Execute this first.</div>
+            </div>
             <div class="daily-slot" id="slot-major" data-slot="major">
                 <span class="slot-placeholder">Your #1 most important task today</span>
             </div>
         </div>
 
         <div class="daily-zone medium-zone">
-            <div class="zone-label">2 Medium Tasks</div>
+            <div class="zone-header">
+                <div class="zone-label">2 Support Actions</div>
+                <div class="zone-sub">Secondary tasks. Complete after your Major Mission.</div>
+            </div>
             <div class="daily-slot" id="slot-medium1" data-slot="medium1">
-                <span class="slot-placeholder">Medium task 1</span>
+                <span class="slot-placeholder">Support action 1</span>
             </div>
             <div class="daily-slot" id="slot-medium2" data-slot="medium2">
-                <span class="slot-placeholder">Medium task 2</span>
+                <span class="slot-placeholder">Support action 2</span>
             </div>
         </div>
 
         <div class="daily-zone nonneg-zone">
-            <div class="zone-label">3 Non-Negotiables</div>
+            <div class="zone-header">
+                <div class="zone-label">3 Non-Negotiables</div>
+                <div class="zone-sub">Daily maintenance. Non-optional. Health, boundaries, recovery.</div>
+            </div>
             <div class="daily-slot" id="slot-non1" data-slot="non1">
                 <span class="slot-placeholder">Non-negotiable 1</span>
             </div>
@@ -403,31 +431,108 @@
     <!-- REVIEW TAB -->
     <section id="tab-review" class="tab-content" role="tabpanel">
         <div class="section-header">
-            <h2>Weekly Review</h2>
-            <p class="hint">Week of <span id="week-label"></span></p>
+            <h2>Weekly Recovery Review</h2>
+            <p class="hint">Week of <span id="week-label"></span> &mdash; honest reflection, not judgment.</p>
         </div>
         <div class="review-form">
             <div class="form-group">
+                <label for="rv-job-apps-week">Job applications sent this week</label>
+                <input type="number" id="rv-job-apps-week" min="0" max="100" placeholder="e.g. 15">
+            </div>
+            <div class="form-group">
+                <label for="rv-finance">Financial actions taken</label>
+                <textarea id="rv-finance" rows="2" placeholder="Rent paid, debt call made, invoice sent, bill sorted&hellip;"></textarea>
+            </div>
+            <div class="form-group">
                 <label for="rv-completed">What did I complete this week?</label>
-                <textarea id="rv-completed" rows="3" placeholder="List your wins…"></textarea>
+                <textarea id="rv-completed" rows="2" placeholder="List key tasks completed, wins, progress made&hellip;"></textarea>
             </div>
             <div class="form-group">
-                <label for="rv-avoided">What did I avoid or procrastinate on?</label>
-                <textarea id="rv-avoided" rows="3" placeholder="Be honest with yourself…"></textarea>
+                <label for="rv-avoidance">Biggest avoidance behaviour</label>
+                <textarea id="rv-avoidance" rows="2" placeholder="What did I keep putting off? Be honest."></textarea>
             </div>
             <div class="form-group">
-                <label for="rv-stressed">What caused the most stress?</label>
-                <textarea id="rv-stressed" rows="3" placeholder="Identify the source…"></textarea>
+                <label for="rv-destabilised">What destabilised me emotionally?</label>
+                <textarea id="rv-destabilised" rows="2" placeholder="Patterns, triggers, situations that disrupted stability&hellip;"></textarea>
             </div>
             <div class="form-group">
-                <label for="rv-next">What is my #1 priority for next week?</label>
-                <textarea id="rv-next" rows="3" placeholder="One clear focus…"></textarea>
+                <label for="rv-boundaries">Emotional boundaries I protected</label>
+                <textarea id="rv-boundaries" rows="2" placeholder="What did I refuse to get pulled into? What did I protect?"></textarea>
             </div>
-            <button class="btn btn-primary" id="save-review-btn" onclick="saveReview()">Save Review</button>
+            <div class="form-group">
+                <label for="rv-mission">Single recovery mission for next week</label>
+                <textarea id="rv-mission" rows="2" placeholder="One clear priority only. No more than one."></textarea>
+            </div>
+            <button class="btn btn-primary" id="save-review-btn" onclick="saveReview()">Save Weekly Review</button>
         </div>
         <div id="past-reviews"></div>
     </section>
 
+
+    <!-- JOB RECOVERY TAB -->
+    <section id="tab-jobs" class="tab-content" role="tabpanel">
+
+        <div class="section-header tasks-header-row">
+            <div>
+                <h2>Job Recovery</h2>
+                <p class="hint">Track every opportunity. Minimum 3 applications per day.</p>
+            </div>
+        </div>
+
+        <!-- Daily Execution Panel -->
+        <div class="dashboard-card job-daily-panel">
+            <div class="dashboard-card-label">Today&rsquo;s Target</div>
+            <div class="job-daily-row">
+                <div class="job-daily-left">
+                    <span class="job-daily-count" id="job-daily-count">0 / 3</span>
+                    <span class="job-daily-sub">applications completed today</span>
+                </div>
+                <button class="btn btn-primary" onclick="incrementJobApps(); renderJobs()">+1 Application Completed</button>
+            </div>
+            <div class="job-daily-bar" id="job-daily-bar"><div class="job-daily-fill" style="width:0%"></div></div>
+        </div>
+
+        <!-- Quick Capture -->
+        <div class="job-capture-section">
+            <div class="job-capture-label">Quick Capture</div>
+            <p class="hint" style="margin-bottom:12px">Low energy? Paste the URL and title. Save now &mdash; add details later.</p>
+            <div class="job-capture-form">
+                <input type="text" id="jq-title" placeholder="Job title &mdash; e.g. IT Support Engineer">
+                <input type="text" id="jq-company" placeholder="Company name (optional)">
+                <input type="text" id="jq-url" placeholder="Paste job URL (optional)">
+                <div class="job-capture-row">
+                    <button class="btn btn-primary" onclick="quickAddJob()">Save Job</button>
+                    <button class="btn btn-outline" onclick="openJobModal(null)">+ Full Details</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="job-filters-bar">
+            <div class="job-tag-filters" id="job-tag-filters">
+                <button class="jf-tag active" data-tag="" onclick="setJobTagFilter('')">All</button>
+                <button class="jf-tag" data-tag="Remote"        onclick="setJobTagFilter('Remote')">Remote</button>
+                <button class="jf-tag" data-tag="Hybrid"        onclick="setJobTagFilter('Hybrid')">Hybrid</button>
+                <button class="jf-tag" data-tag="On-site"       onclick="setJobTagFilter('On-site')">On-site</button>
+                <button class="jf-tag" data-tag="&pound;40k+"   onclick="setJobTagFilter('£40k+')">&#163;40k+</button>
+                <button class="jf-tag" data-tag="Cybersecurity" onclick="setJobTagFilter('Cybersecurity')">Cybersecurity</button>
+                <button class="jf-tag" data-tag="IT Support"    onclick="setJobTagFilter('IT Support')">IT Support</button>
+                <button class="jf-tag" data-tag="Urgent"        onclick="setJobTagFilter('Urgent')">Urgent</button>
+            </div>
+            <select id="job-status-filter" onchange="renderJobs()" class="job-status-select">
+                <option value="">All Status</option>
+                <option value="Saved">Saved</option>
+                <option value="Applied">Applied</option>
+                <option value="Interview">Interview</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Offer">Offer</option>
+            </select>
+        </div>
+
+        <!-- Job List -->
+        <div id="job-list" class="job-list"></div>
+
+    </section>
 
     <!-- HOW TO USE TAB -->
     <section id="tab-howto" class="tab-content" role="tabpanel">
@@ -563,9 +668,9 @@
                     <p>Your only command for today: 1 Major Mission, 2 Medium Tasks, 3 Non-Negotiables. If it is not on this list, it does not exist today. Build it once each morning, then execute. Do not re-plan.</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🧠</div>
-                    <div class="feature-name">Brain State Modes</div>
-                    <p>Tell the system how you feel right now. It adjusts which tasks are surfaced, how the Daily 3 is built, and what is dimmed or highlighted to match your current capacity.</p>
+                    <div class="feature-icon">&#129504;</div>
+                    <div class="feature-name">Recovery Modes</div>
+                    <p>Tell the system how you feel right now. It adjusts which tasks are surfaced, how Today&rsquo;s Plan is built, and what is dimmed or highlighted to match your current capacity.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📅</div>
@@ -590,10 +695,10 @@
             </div>
         </div>
 
-        <!-- 4. Brain State Modes -->
+        <!-- 4. Recovery Modes -->
         <div class="howto-card">
-            <div class="howto-card-label">Brain State Modes</div>
-            <h3 class="howto-card-title">Match the system to your energy and situation</h3>
+            <div class="howto-card-label">Recovery Modes</div>
+            <h3 class="howto-card-title">Match the system to your energy and current state</h3>
             <div class="mode-grid">
                 <div class="mode-card mode-normal">
                     <div class="mode-icon">🟢</div>
@@ -715,8 +820,8 @@
                 <div class="qs-step">
                     <div class="qs-num">3</div>
                     <div class="qs-text">
-                        <strong>Recurring tasks appear in Daily 3 suggestions automatically</strong>
-                        <p>On the correct days, the task surfaces in your suggestion pool and in "Build Today For Me". It shows a 🔁 badge with its schedule.</p>
+                        <strong>Recurring tasks appear in Today&rsquo;s Plan suggestions automatically</strong>
+                        <p>On the correct days, the task surfaces in your suggestion pool and in &ldquo;Build Today For Me&rdquo;. It shows a &#128257; badge with its schedule.</p>
                     </div>
                 </div>
                 <div class="qs-step">
@@ -730,7 +835,7 @@
                     <div class="qs-num">5</div>
                     <div class="qs-text">
                         <strong>Pause with ⏸ &mdash; resume with ▶</strong>
-                        <p>Use pause when you need to skip a period without deleting the task. A paused task shows ⏸ Paused and won't appear in Daily 3 until resumed.</p>
+                        <p>Use pause when you need to skip a period without deleting the task. A paused task shows &#9208; Paused and won&rsquo;t appear in Today&rsquo;s Plan until resumed.</p>
                     </div>
                 </div>
             </div>
@@ -806,6 +911,82 @@
 </main>
 
 <div id="toast" class="toast" aria-live="polite"></div>
+
+<!-- ===== JOB DETAIL MODAL ===== -->
+<div id="job-modal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+        <button class="close-btn" onclick="closeJobModal()" aria-label="Close">&#x2715;</button>
+        <h3 class="modal-title" id="job-modal-title">Add Job Entry</h3>
+
+        <div class="form-group">
+            <label for="jm-title">Job Title</label>
+            <input type="text" id="jm-title" placeholder="e.g. IT Support Engineer">
+        </div>
+        <div class="form-group">
+            <label for="jm-company">Company</label>
+            <input type="text" id="jm-company" placeholder="e.g. Accenture">
+        </div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label for="jm-salary">Salary</label>
+                <input type="text" id="jm-salary" placeholder="e.g. &pound;35k&ndash;&pound;45k">
+            </div>
+            <div class="form-group">
+                <label for="jm-location">Location</label>
+                <input type="text" id="jm-location" placeholder="e.g. London / Remote">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="jm-url">Job URL</label>
+            <input type="text" id="jm-url" placeholder="https://&hellip;">
+        </div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label for="jm-status">Status</label>
+                <select id="jm-status">
+                    <option value="Saved">Saved</option>
+                    <option value="Applied">Applied</option>
+                    <option value="Interview">Interview</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Offer">Offer</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="jm-match">Match Score</label>
+                <select id="jm-match">
+                    <option value="1">1 &mdash; Weak fit</option>
+                    <option value="2">2 &mdash; Possible</option>
+                    <option value="3" selected>3 &mdash; Good fit</option>
+                    <option value="4">4 &mdash; Strong fit</option>
+                    <option value="5">5 &mdash; Perfect fit</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Tags</label>
+            <div class="job-tag-checks">
+                <label class="check-item"><input type="checkbox" name="jm-tag" value="Remote"> Remote</label>
+                <label class="check-item"><input type="checkbox" name="jm-tag" value="Hybrid"> Hybrid</label>
+                <label class="check-item"><input type="checkbox" name="jm-tag" value="On-site"> On-site</label>
+                <label class="check-item"><input type="checkbox" name="jm-tag" value="£40k+"> &pound;40k+</label>
+                <label class="check-item"><input type="checkbox" name="jm-tag" value="Cybersecurity"> Cybersecurity</label>
+                <label class="check-item"><input type="checkbox" name="jm-tag" value="IT Support"> IT Support</label>
+                <label class="check-item"><input type="checkbox" name="jm-tag" value="Urgent"> Urgent</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="jm-followup">Follow-up Date <span class="label-optional">(optional)</span></label>
+            <input type="date" id="jm-followup">
+        </div>
+        <div class="form-group">
+            <label for="jm-notes">Notes</label>
+            <textarea id="jm-notes" rows="3" placeholder="Requirements, contacts, CV version, interview prep&hellip;"></textarea>
+        </div>
+
+        <input type="hidden" id="jm-id">
+        <button class="btn btn-primary btn-block" onclick="saveJobModal()">Save Job</button>
+    </div>
+</div>
 
 <script src="app.js"></script>
 </body>
