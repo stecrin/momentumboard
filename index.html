@@ -22,24 +22,24 @@
 <!-- ===== EMERGENCY RESET MODAL ===== -->
 <div id="emergency-modal" class="modal" aria-hidden="true">
     <div class="modal-content emergency-content">
-        <h2 class="emergency-title">Stop.</h2>
+        <h2 class="emergency-title">Pause. Reset.</h2>
         <div class="emergency-steps">
-            <div class="e-step">💧 Drink water right now.</div>
+            <div class="e-step">&#128167; Drink water right now. Do not skip this.</div>
             <div class="e-step timer-step">
-                <span>🌬️ Breathe for 60 seconds.</span>
+                <span>&#127744; Breathe slowly for 60 seconds.</span>
                 <button id="start-timer-btn" class="btn btn-calm btn-sm">Start Timer</button>
                 <div id="timer-display" class="timer-display hidden">
                     <div class="timer-circle"><span id="timer-count">60</span></div>
-                    <p id="timer-status">Breathe slowly…</p>
+                    <p id="timer-status">Breathe slowly&hellip;</p>
                 </div>
             </div>
-            <div class="e-step">📝 Write only 3 tasks below.</div>
+            <div class="e-step">&#128221; Write only 3 tasks below. No more.</div>
             <textarea id="emergency-tasks" rows="4" placeholder="1. &#10;2. &#10;3. "></textarea>
-            <div class="e-step">☑️ Choose the smallest task from those 3.</div>
-            <div class="e-step">⏱️ Start working on it for just 10 minutes.</div>
+            <div class="e-step">&#9745;&#65039; Pick the smallest task from those 3.</div>
+            <div class="e-step">&#9203; Work on it for exactly 10 minutes. Start now.</div>
         </div>
         <div class="emergency-actions">
-            <button class="btn btn-primary" onclick="closeEmergency(true)">Save tasks &amp; I'm ready</button>
+            <button class="btn btn-primary" onclick="closeEmergency(true)">Save &amp; Begin Recovery</button>
             <button class="btn btn-ghost" onclick="closeEmergency(false)">Close</button>
         </div>
     </div>
@@ -169,12 +169,13 @@
     </div>
 
     <nav class="tabs" role="tablist">
-        <button class="tab active" data-tab="inbox"  role="tab">Inbox</button>
-        <button class="tab"        data-tab="tasks"  role="tab">Tasks</button>
-        <button class="tab"        data-tab="daily"  role="tab">Daily 3</button>
-        <button class="tab"        data-tab="weekly" role="tab">Weekly</button>
-        <button class="tab"        data-tab="review" role="tab">Review</button>
-        <button class="tab"        data-tab="howto"  role="tab">How to Use</button>
+        <button class="tab active" data-tab="dashboard" role="tab">Dashboard</button>
+        <button class="tab"        data-tab="inbox"     role="tab">Inbox</button>
+        <button class="tab"        data-tab="tasks"     role="tab">Tasks</button>
+        <button class="tab"        data-tab="daily"     role="tab">Today</button>
+        <button class="tab"        data-tab="weekly"    role="tab">Weekly</button>
+        <button class="tab"        data-tab="review"    role="tab">Review</button>
+        <button class="tab"        data-tab="howto"     role="tab">How to Use</button>
     </nav>
 </header>
 
@@ -187,8 +188,113 @@
 <!-- ===== MAIN CONTENT ===== -->
 <main>
 
+    <!-- RECOVERY DASHBOARD TAB -->
+    <section id="tab-dashboard" class="tab-content active" role="tabpanel">
+
+        <div class="phase-banner">
+            <div class="phase-tag">Phase 1</div>
+            <span class="phase-text">Stabilisation &mdash; Stop chaos. Reduce overwhelm. Regain control.</span>
+        </div>
+
+        <!-- Today's Recovery Focus -->
+        <div class="dashboard-card">
+            <div class="dashboard-card-label">Today&rsquo;s Recovery Focus &mdash; Major Mission</div>
+            <div class="dash-focus-text" id="dash-focus-text">No major mission set &mdash; go to Today&rsquo;s Plan and assign one.</div>
+            <p class="hint" style="margin-top:8px">Set your major mission in <strong>Today&rsquo;s Plan</strong> tab. It will appear here as your daily anchor.</p>
+        </div>
+
+        <!-- Daily Minimum Standard -->
+        <div class="dashboard-card">
+            <div class="dashboard-card-label">Daily Minimum Standard</div>
+            <p class="hint" style="margin-bottom:14px">A successful day requires all five. Nothing more, nothing less.</p>
+            <div class="dash-checklist">
+
+                <div class="dash-check-item" id="dash-jobs">
+                    <div class="dash-check-left">
+                        <div class="dash-check-icon">📋</div>
+                        <div>
+                            <div class="dash-check-title">Job Applications</div>
+                            <div class="dash-check-sub">Minimum 3 per day &mdash; income stability</div>
+                        </div>
+                    </div>
+                    <div class="dash-check-right">
+                        <button class="btn btn-ghost btn-sm" onclick="decrementJobApps()">&#8722;</button>
+                        <span class="job-apps-counter" id="dash-job-count">0 / 3</span>
+                        <button class="btn btn-primary btn-sm" onclick="incrementJobApps()">+1</button>
+                    </div>
+                </div>
+
+                <div class="dash-check-item" id="dash-money-item">
+                    <div class="dash-check-left">
+                        <div class="dash-check-icon">&#128176;</div>
+                        <div>
+                            <div class="dash-check-title">Money Action</div>
+                            <div class="dash-check-sub">Face one financial task &mdash; no avoidance</div>
+                        </div>
+                    </div>
+                    <div class="dash-check-right">
+                        <button class="btn btn-outline btn-sm" id="dash-money-btn" onclick="toggleDashCheck('moneyAction')">Not done</button>
+                    </div>
+                </div>
+
+                <div class="dash-check-item" id="dash-movement-item">
+                    <div class="dash-check-left">
+                        <div class="dash-check-icon">&#127947;</div>
+                        <div>
+                            <div class="dash-check-title">Movement / Gym</div>
+                            <div class="dash-check-sub">Protect your nervous system</div>
+                        </div>
+                    </div>
+                    <div class="dash-check-right">
+                        <button class="btn btn-outline btn-sm" id="dash-movement-btn" onclick="toggleDashCheck('movement')">Not done</button>
+                    </div>
+                </div>
+
+                <div class="dash-check-item" id="dash-boundary-item">
+                    <div class="dash-check-left">
+                        <div class="dash-check-icon">&#128737;</div>
+                        <div>
+                            <div class="dash-check-title">Emotional Boundary</div>
+                            <div class="dash-check-sub">Protect clarity from destabilisation</div>
+                        </div>
+                    </div>
+                    <div class="dash-check-right">
+                        <button class="btn btn-outline btn-sm" id="dash-boundary-btn" onclick="toggleDashCheck('emotionalBoundary')">Not checked</button>
+                    </div>
+                </div>
+
+                <div class="dash-check-item" id="dash-task-item">
+                    <div class="dash-check-left">
+                        <div class="dash-check-icon">&#9989;</div>
+                        <div>
+                            <div class="dash-check-title">One Important Task Completed</div>
+                            <div class="dash-check-sub">Your Major Mission or one key action</div>
+                        </div>
+                    </div>
+                    <div class="dash-check-right">
+                        <button class="btn btn-outline btn-sm" id="dash-task-btn" onclick="toggleDashCheck('importantTask')">Not done</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Recovery Rules -->
+        <div class="dashboard-card">
+            <div class="dashboard-card-label">Recovery Rules</div>
+            <div class="recovery-rules-mini">
+                <div class="rrule-item">No fighting multiple wars at once.</div>
+                <div class="rrule-item">Reduce complexity aggressively.</div>
+                <div class="rrule-item">Money problems must be faced directly. No avoidance.</div>
+                <div class="rrule-item">When overwhelmed &mdash; water, breathing, 3 tasks only.</div>
+                <div class="rrule-item">Protect mental clarity from emotional destabilisation.</div>
+            </div>
+        </div>
+
+    </section>
+
     <!-- INBOX TAB -->
-    <section id="tab-inbox" class="tab-content active" role="tabpanel">
+    <section id="tab-inbox" class="tab-content" role="tabpanel">
         <div class="section-header">
             <h2>Brain Dump Inbox</h2>
             <p class="hint">Type everything on your mind. Messy is fine. Separate by commas or new lines.</p>
@@ -224,12 +330,12 @@
         <div id="task-list" class="task-list"></div>
     </section>
 
-    <!-- DAILY 3 TAB -->
+    <!-- DAILY STABILISATION TAB -->
     <section id="tab-daily" class="tab-content" role="tabpanel">
         <div class="daily-header-row">
             <div>
-                <h2>Daily 3 &mdash; <span id="today-date"></span></h2>
-                <p class="hint">Focus only on these today. Everything else can wait.</p>
+                <h2>Daily Stabilisation &mdash; <span id="today-date"></span></h2>
+                <p class="hint">These are your only commands today. Execute one by one. Everything else can wait.</p>
             </div>
             <button class="btn btn-ai btn-sm" onclick="buildTodayForMe()">✦ Build Today For Me</button>
         </div>
@@ -237,8 +343,8 @@
         <div id="overload-warning" class="overload-warning hidden">
             <span class="ow-icon">⚠️</span>
             <div>
-                <strong>You are trying to fight too many battles today.</strong>
-                <p>Choose one major mission and defer the rest to the Weekly plan.</p>
+                <strong>Too many battles. Reduce now.</strong>
+                <p>Pick one major mission. Everything else goes to Weekly. Fighting multiple fronts destroys stability.</p>
             </div>
         </div>
 
@@ -334,9 +440,18 @@
         <div class="howto-top">
             <div>
                 <h2>How to Use</h2>
-                <p class="hint">Your complete guide to the Stefan RecoveryOS.</p>
+                <p class="hint">Your complete guide to Stefan RecoveryOS.</p>
             </div>
             <button class="btn btn-outline btn-sm no-print" onclick="printHowTo()">&#128438; Print Guide</button>
+        </div>
+
+        <!-- 0. What is RecoveryOS -->
+        <div class="howto-card">
+            <div class="howto-card-label">Phase 1 &mdash; Stabilisation</div>
+            <h3 class="howto-card-title">This is a recovery and execution system &mdash; not a productivity app</h3>
+            <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:10px;line-height:1.6">Stefan RecoveryOS exists for one purpose: to help you regain control during periods of emotional pressure, financial stress, overwhelm, and lack of clarity.</p>
+            <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:10px;line-height:1.6">The goal is not to do more. The goal is to <strong>stabilise, simplify, and execute the few actions that actually matter.</strong></p>
+            <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.6">Phase 1 priorities: job applications, rent and debt recovery, nervous system regulation, daily execution discipline, emotional boundaries.</p>
         </div>
 
         <!-- 1. Quick Start -->
@@ -368,8 +483,8 @@
                 <div class="qs-step">
                     <div class="qs-num">4</div>
                     <div class="qs-text">
-                        <strong>Go to Daily 3 &mdash; click "✦ Build Today For Me"</strong>
-                        <p>The system picks your Major Mission from the highest priority tasks, 2 Medium Tasks, and 3 Non-Negotiables automatically. It respects your Brain State.</p>
+                        <strong>Go to Today&rsquo;s Plan &mdash; click &ldquo;&#10022; Build Today For Me&rdquo;</strong>
+                        <p>The system picks your Major Mission from the highest priority tasks, 2 Medium Tasks, and 3 Non-Negotiables automatically. It respects your Recovery Mode.</p>
                     </div>
                 </div>
                 <div class="qs-step">
@@ -392,7 +507,7 @@
                     <ul class="workflow-list">
                         <li>Brain dump everything on your mind into Inbox</li>
                         <li>Click "Organise My Brain" and accept tasks</li>
-                        <li>Go to Daily 3 &rarr; "Build Today For Me"</li>
+                        <li>Go to Today&rsquo;s Plan &rarr; &ldquo;Build Today For Me&rdquo;</li>
                         <li>Start the Major Mission immediately &mdash; do not wait</li>
                     </ul>
                 </div>
@@ -444,8 +559,8 @@
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">📌</div>
-                    <div class="feature-name">Daily 3</div>
-                    <p>Your only command for today: 1 Major Mission, 2 Medium Tasks, 3 Non-Negotiables. If it is not on this list, it does not exist today. Build it once each morning, then execute it.</p>
+                    <div class="feature-name">Daily Stabilisation</div>
+                    <p>Your only command for today: 1 Major Mission, 2 Medium Tasks, 3 Non-Negotiables. If it is not on this list, it does not exist today. Build it once each morning, then execute. Do not re-plan.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">🧠</div>
@@ -526,7 +641,7 @@
                 </div>
                 <div class="rule-item">
                     <div class="rule-num">5</div>
-                    <p><strong>Daily 3 is the command for the day.</strong> Build it once in the morning. Execute it. Do not rebuild or re-plan mid-day &mdash; it kills momentum.</p>
+                    <p><strong>Today&rsquo;s Plan is the command for the day.</strong> Build it once in the morning. Execute it. Do not rebuild or re-plan mid-day &mdash; that kills momentum and creates the illusion of productivity.</p>
                 </div>
                 <div class="rule-item">
                     <div class="rule-num">6</div>
@@ -630,7 +745,7 @@
                     <div class="qs-num">1</div>
                     <div class="qs-text">
                         <strong>Click &ldquo;&#8595; Backup&rdquo; in the header</strong>
-                        <p>Downloads a file named <em>stefan-command-system-backup-YYYY-MM-DD.json</em> with all your tasks, daily plan, weekly plan, and reviews. Do this regularly.</p>
+                        <p>Downloads a file named <em>stefan-recovery-os-backup-YYYY-MM-DD.json</em> with all your tasks, daily plan, weekly plan, and reviews. Do this regularly.</p>
                     </div>
                 </div>
                 <div class="qs-step">

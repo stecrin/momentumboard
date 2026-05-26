@@ -1,16 +1,16 @@
 // ===== CONSTANTS =====
 
 const CATEGORIES = [
-    'Survival / Money',
-    'University',
+    'Job / Income',
+    'Rent / Debt',
     'Car / Assets',
-    'House / Organisation',
     'Health / Gym',
-    'Spiritual',
-    'YouTube / Creative',
-    'Business / Cybersecurity',
+    'Emotional Boundaries',
+    'House / Stability',
     'Admin / Bills',
-    'Relationships / Family',
+    'Business / Cybersecurity',
+    'University',
+    'Spiritual',
 ];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -49,6 +49,14 @@ let state = {
     weeklyMap:  {},
     reviews:    [],
     brainState: 'normal',
+    recoveryDashboard: {
+        date: null,
+        jobApps: 0,
+        moneyAction: false,
+        movement: false,
+        emotionalBoundary: false,
+        importantTask: false,
+    },
 };
 
 let currentBreakdownId = null;
@@ -74,6 +82,15 @@ function hydrate() {
             ...(state.daily3 || {}),
         };
         state.brainState = state.brainState || 'normal';
+        state.recoveryDashboard = {
+            date: null,
+            jobApps: 0,
+            moneyAction: false,
+            movement: false,
+            emotionalBoundary: false,
+            importantTask: false,
+            ...(state.recoveryDashboard || {}),
+        };
     } catch (e) {
         console.warn('Could not parse stored data, starting fresh.');
     }
@@ -87,7 +104,7 @@ function exportData() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `stefan-command-system-backup-${date}.json`;
+    a.download = `stefan-recovery-os-backup-${date}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -118,7 +135,7 @@ function importData() {
                 renderBrainStateBar();
                 const activeTab = document.querySelector('.tab.active');
                 if (activeTab) {
-                    const renders = { inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, review: renderReview };
+                    const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, review: renderReview };
                     const fn = renders[activeTab.dataset.tab];
                     if (fn) fn();
                 }
@@ -231,16 +248,16 @@ function recurrenceLabel(task) {
 
 function detectCategory(text) {
     const t = text.toLowerCase();
-    if (/rent\b|uc\b|universal credit|bill\b|income|sell\b|money|earn|invoice|\bpay\b|salary|cash|afford/.test(t))        return 'Survival / Money';
-    if (/assignment|university|uni\b|study|lecture|essay|module|exam|course|seminar|tutor/.test(t))                        return 'University';
-    if (/\bcar\b|fiat|mot\b|bumper|tyre|tire|oil change|service\b|vehicle|brake|exhaust/.test(t))                          return 'Car / Assets';
-    if (/clean|cleaning|house\b|room\b|garage|hoover|vacuum|tidy|organis|dishes|laundry|washing|clutter/.test(t))         return 'House / Organisation';
-    if (/\bgym\b|sleep|food|health|eat\b|exercise|run\b|walk\b|workout|diet|hydrat|water\b|push.?up|stretc/.test(t))      return 'Health / Gym';
-    if (/monastery|prayer|confession|spiritual|church|fast\b|fasting|meditat|rosary|\bmass\b|devotion/.test(t))           return 'Spiritual';
-    if (/youtube|video\b|capcut|higgsfield|edit\b|thumbnail|channel|content|record\b|film\b|vlog/.test(t))                return 'YouTube / Creative';
-    if (/linkedin|client|website|cybersecurity|pentest|hack|portfolio|startup|freelance|business\b/.test(t))              return 'Business / Cybersecurity';
-    if (/admin|account\b|form\b|application|apply\b|email\b|letter\b|document|nhs\b|hmrc|gov\b|tax\b|register/.test(t)) return 'Admin / Bills';
-    if (/wife|kids|family|message\b|call\b|phone\b|parents|mum\b|dad\b|friend|relationship|partner/.test(t))             return 'Relationships / Family';
+    if (/rent\b|arrear|landlord|owe\b|debt\b|backlog|mortgage/.test(t))                                                  return 'Rent / Debt';
+    if (/\bjob\b|apply\b|application|interview|cv\b|resume|income|earn|salary|invoice|sell\b|money|afford|freelance|payment/.test(t)) return 'Job / Income';
+    if (/assignment|university|uni\b|study|lecture|essay|module|exam|course|seminar|tutor/.test(t))                       return 'University';
+    if (/\bcar\b|fiat|mot\b|bumper|tyre|tire|oil change|service\b|vehicle|brake|exhaust/.test(t))                        return 'Car / Assets';
+    if (/clean|cleaning|house\b|room\b|garage|hoover|vacuum|tidy|organis|dishes|laundry|washing|clutter/.test(t))        return 'House / Stability';
+    if (/\bgym\b|sleep|food|health|eat\b|exercise|run\b|walk\b|workout|diet|hydrat|water\b|push.?up|stretc/.test(t))     return 'Health / Gym';
+    if (/monastery|prayer|confession|spiritual|church|fast\b|fasting|meditat|rosary|\bmass\b|devotion/.test(t))          return 'Spiritual';
+    if (/boundary|conflict|emotion|toxic|protect.*clarity|mental.*pressure|relationship|partner|family/.test(t))         return 'Emotional Boundaries';
+    if (/linkedin|client|website|cybersecurity|pentest|hack|portfolio|startup|business\b|youtube|video\b|content|creative/.test(t)) return 'Business / Cybersecurity';
+    if (/uc\b|universal credit|bill\b|admin|account\b|form\b|email\b|nhs\b|hmrc|gov\b|tax\b|register/.test(t))          return 'Admin / Bills';
     return 'Admin / Bills';
 }
 
@@ -579,12 +596,12 @@ function removeSubtask(i) {
 // ===== STRATEGIC INTELLIGENCE =====
 
 function detectTier(task) {
-    if (task.urgent || task.category === 'Survival / Money' || task.taskType === 'Emergency') return 1;
+    if (task.urgent || ['Job / Income', 'Rent / Debt', 'Survival / Money'].includes(task.category) || task.taskType === 'Emergency') return 1;
     if (task.makesMoney || task.taskType === 'Money') return 1;
     if (['Business / Cybersecurity', 'University', 'YouTube / Creative'].includes(task.category) ||
         task.taskType === 'Strategic' || task.taskType === 'Deep Work') return 2;
-    if (['Health / Gym', 'House / Organisation', 'Admin / Bills', 'Car / Assets',
-         'Relationships / Family', 'Spiritual'].includes(task.category) ||
+    if (['Health / Gym', 'House / Stability', 'House / Organisation', 'Admin / Bills', 'Car / Assets',
+         'Emotional Boundaries', 'Relationships / Family', 'Spiritual'].includes(task.category) ||
         ['Maintenance', 'Recovery', 'Admin'].includes(task.taskType)) return 3;
     return 4;
 }
@@ -594,7 +611,7 @@ function detectWhyMatters(task) {
     const type = task.taskType  || detectTaskType(task.text || '');
     if (type === 'Emergency' || task.urgent)
         return 'This task demands immediate attention — delay increases risk or cost.';
-    if (cat === 'Survival / Money' || type === 'Money' || task.makesMoney)
+    if (['Job / Income', 'Rent / Debt', 'Survival / Money'].includes(cat) || type === 'Money' || task.makesMoney)
         return 'This task directly protects or generates income. It is non-negotiable.';
     if (cat === 'University')
         return 'This task advances your academic standing and long-term credentials.';
@@ -608,8 +625,10 @@ function detectWhyMatters(task) {
         return 'This task protects your energy and resilience — without it, everything else suffers.';
     if (cat === 'Spiritual')
         return 'This task builds the calm and groundedness required to perform at your best.';
-    if (cat === 'House / Organisation')
+    if (['House / Stability', 'House / Organisation'].includes(cat))
         return 'This task removes daily environmental friction that quietly drains focus.';
+    if (cat === 'Emotional Boundaries')
+        return 'This task protects your mental clarity from destabilisation. Execution depends on it.';
     if (cat === 'Car / Assets')
         return 'This task protects an asset that enables your freedom and income.';
     if (cat === 'Admin / Bills')
@@ -628,7 +647,7 @@ function detectWhyMatters(task) {
 function switchTab(name) {
     document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.tab-content').forEach(s => s.classList.toggle('active', s.id === `tab-${name}`));
-    const renders = { inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, review: renderReview };
+    const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly, review: renderReview };
     if (renders[name]) renders[name]();
 }
 
@@ -969,7 +988,7 @@ function renderTasks() {
     const notice = document.getElementById('brain-state-notice');
     const noticeMap = {
         'low-energy':  { cls: 'notice-low-energy', msg: '⚡ Low Energy Mode — high-energy tasks are dimmed. Focus on lighter work.' },
-        'emergency':   { cls: 'notice-emergency',  msg: '🔴 Emergency Mode — survival and urgent tasks highlighted. Ignore the rest.' },
+        'emergency':   { cls: 'notice-emergency',  msg: '🔴 Crisis Mode — income, rent, and urgent tasks highlighted. Everything else waits.' },
         'deep-focus':  { cls: 'notice-deep-focus', msg: '🎯 Deep Focus Mode — check the overlay for your single mission.' },
     };
     const modeInfo = noticeMap[state.brainState];
@@ -997,7 +1016,7 @@ function renderTasks() {
 
     // Emergency mode: sort survival/urgent tasks to top
     if (state.brainState === 'emergency') {
-        const emergencyCats = new Set(['Survival / Money', 'Admin / Bills']);
+        const emergencyCats = new Set(['Job / Income', 'Rent / Debt', 'Survival / Money', 'Admin / Bills']);
         active.sort((a, b) => {
             const aEmerg = (a.urgent || emergencyCats.has(a.category)) ? 0 : 1;
             const bEmerg = (b.urgent || emergencyCats.has(b.category)) ? 0 : 1;
@@ -1180,7 +1199,7 @@ function renderDailySuggestions() {
     if (state.brainState === 'low-energy') {
         pool = pool.filter(t => t.energy !== 'high').concat(pool.filter(t => t.energy === 'high'));
     } else if (state.brainState === 'emergency') {
-        const emergencyCats = new Set(['Survival / Money', 'Admin / Bills']);
+        const emergencyCats = new Set(['Job / Income', 'Rent / Debt', 'Survival / Money', 'Admin / Bills']);
         const urgent = pool.filter(t => t.urgent || emergencyCats.has(t.category));
         const rest   = pool.filter(t => !t.urgent && !emergencyCats.has(t.category));
         pool = [...urgent, ...rest];
@@ -1248,7 +1267,7 @@ function buildTodayForMe() {
         const heavy = pool.filter(t => t.energy === 'high');
         pool = [...sortByPriority(light), ...sortByPriority(heavy)];
     } else if (mode === 'emergency') {
-        const emergencyCats = new Set(['Survival / Money', 'Admin / Bills']);
+        const emergencyCats = new Set(['Job / Income', 'Rent / Debt', 'Survival / Money', 'Admin / Bills']);
         const urgent = sortByPriority(pool.filter(t => t.urgent || emergencyCats.has(t.category)));
         const rest   = sortByPriority(pool.filter(t => !t.urgent && !emergencyCats.has(t.category)));
         pool = [...urgent, ...rest];
@@ -1270,7 +1289,7 @@ function buildTodayForMe() {
     }
 
     // Non-Negotiables — prefer health/spiritual, fallback to defaults
-    const nonNegCats = new Set(['Health / Gym', 'Spiritual', 'Relationships / Family']);
+    const nonNegCats = new Set(['Health / Gym', 'Spiritual', 'Emotional Boundaries']);
     const nnPool = pool.filter(t => !used.has(t.id) && nonNegCats.has(t.category));
     const restPool = pool.filter(t => !used.has(t.id) && !nonNegCats.has(t.category));
     const nnSource = [...nnPool, ...restPool];
@@ -1306,7 +1325,7 @@ function buildTodayForMe() {
     state.daily3 = newDaily3;
     persist();
     renderDaily();
-    showToast('Daily 3 built. Focus and execute.');
+    showToast('Daily Stabilisation built. Execute now.');
 }
 
 // ===== WEEKLY PLANNER =====
@@ -1485,7 +1504,7 @@ function setBrainState(newState) {
     // Re-render active tab to apply mode changes
     const activeTab = document.querySelector('.tab.active');
     if (activeTab) {
-        const renders = { inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly };
+        const renders = { dashboard: renderRecoveryDashboard, inbox: renderInbox, tasks: renderTasks, daily: renderDaily, weekly: renderWeekly };
         const fn = renders[activeTab.dataset.tab];
         if (fn) fn();
     }
@@ -1584,6 +1603,96 @@ function hideModal(id) {
     m.setAttribute('aria-hidden', 'true');
 }
 
+// ===== RECOVERY DASHBOARD =====
+
+function getDashToday() {
+    const today = todayKey();
+    if (state.recoveryDashboard.date !== today) {
+        state.recoveryDashboard = {
+            date: today,
+            jobApps: 0,
+            moneyAction: false,
+            movement: false,
+            emotionalBoundary: false,
+            importantTask: false,
+        };
+        persist();
+    }
+    return state.recoveryDashboard;
+}
+
+function renderRecoveryDashboard() {
+    const d = getDashToday();
+
+    const major = state.daily3.major ? getTask(state.daily3.major) : null;
+    const focusEl = document.getElementById('dash-focus-text');
+    if (focusEl) {
+        focusEl.textContent = major
+            ? major.text
+            : 'No major mission set — go to Today\'s Plan and assign one.';
+        focusEl.classList.toggle('dash-focus-set', !!major);
+    }
+
+    const jobCount = document.getElementById('dash-job-count');
+    if (jobCount) {
+        jobCount.textContent = `${d.jobApps} / 3`;
+        jobCount.classList.toggle('counter-done', d.jobApps >= 3);
+    }
+    updateDashItem('dash-jobs', d.jobApps >= 3);
+
+    updateDashToggle('dash-money-btn', d.moneyAction, 'Not done', 'Done');
+    updateDashItem('dash-money-item', d.moneyAction);
+
+    updateDashToggle('dash-movement-btn', d.movement, 'Not done', 'Done');
+    updateDashItem('dash-movement-item', d.movement);
+
+    updateDashToggle('dash-boundary-btn', d.emotionalBoundary, 'Not checked', 'Protected');
+    updateDashItem('dash-boundary-item', d.emotionalBoundary);
+
+    updateDashToggle('dash-task-btn', d.importantTask, 'Not done', 'Done');
+    updateDashItem('dash-task-item', d.importantTask);
+}
+
+function updateDashToggle(id, done, labelOff, labelOn) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.textContent = done ? labelOn : labelOff;
+    btn.className = 'btn btn-sm ' + (done ? 'btn-calm' : 'btn-outline');
+}
+
+function updateDashItem(id, done) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('dash-done', done);
+}
+
+function incrementJobApps() {
+    getDashToday();
+    if (state.recoveryDashboard.jobApps < 10) {
+        state.recoveryDashboard.jobApps++;
+        persist();
+        renderRecoveryDashboard();
+        if (state.recoveryDashboard.jobApps === 3) {
+            showToast('3 job applications done. Daily target reached.');
+        }
+    }
+}
+
+function decrementJobApps() {
+    getDashToday();
+    if (state.recoveryDashboard.jobApps > 0) {
+        state.recoveryDashboard.jobApps--;
+        persist();
+        renderRecoveryDashboard();
+    }
+}
+
+function toggleDashCheck(field) {
+    getDashToday();
+    state.recoveryDashboard[field] = !state.recoveryDashboard[field];
+    persist();
+    renderRecoveryDashboard();
+}
+
 // ===== INIT =====
 
 function init() {
@@ -1627,7 +1736,7 @@ function init() {
         document.body.classList.remove('print-howto');
     });
 
-    renderInbox();
+    renderRecoveryDashboard();
 }
 
 document.addEventListener('DOMContentLoaded', init);

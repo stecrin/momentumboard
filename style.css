@@ -1298,6 +1298,151 @@ main {
     body.print-howto .example-slot { page-break-inside: avoid; }
 }
 
+/* ===== RECOVERY DASHBOARD ===== */
+.phase-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: linear-gradient(135deg, #1a2d4a 0%, #2a3e5c 100%);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+.phase-tag {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.phase-text {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.72);
+    line-height: 1.4;
+}
+
+.dashboard-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.dashboard-card-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.dash-focus-text {
+    font-size: 1.02rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 14px 16px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    border-left: 4px solid var(--border);
+    line-height: 1.4;
+}
+
+.dash-focus-text.dash-focus-set {
+    color: var(--text);
+    font-style: normal;
+    font-weight: 600;
+    border-left-color: var(--major-col);
+    background: #edf2fb;
+}
+
+.dash-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dash-check-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 15px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.dash-check-item.dash-done {
+    border-color: var(--accent);
+    background: #edf7f3;
+}
+
+.dash-check-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.dash-check-icon { font-size: 1.15rem; flex-shrink: 0; }
+
+.dash-check-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.dash-check-sub {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+
+.dash-check-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.job-apps-counter {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    min-width: 40px;
+    text-align: center;
+}
+
+.job-apps-counter.counter-done { color: var(--accent); }
+
+.recovery-rules-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.rrule-item {
+    padding: 9px 13px;
+    background: var(--bg);
+    border-radius: 8px;
+    font-size: 0.86rem;
+    color: var(--text);
+    border-left: 3px solid var(--accent);
+    line-height: 1.5;
+}
+
 /* ===== RESPONSIVE: How to Use ===== */
 @media (max-width: 640px) {
     .workflow-grid { grid-template-columns: 1fr; }
