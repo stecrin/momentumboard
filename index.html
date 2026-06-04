@@ -501,11 +501,20 @@
                 <input type="text" id="jq-title" placeholder="Job title &mdash; e.g. IT Support Engineer">
                 <input type="text" id="jq-company" placeholder="Company name (optional)">
                 <input type="text" id="jq-url" placeholder="Paste job URL (optional)">
+                <div id="jq-dup-warning" class="dup-warning hidden"></div>
                 <div class="job-capture-row">
                     <button class="btn btn-primary" onclick="quickAddJob()">Save Job</button>
                     <button class="btn btn-outline" onclick="openJobModal(null)">+ Full Details</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Already Applied Checker -->
+        <div class="job-checker-section">
+            <div class="job-capture-label">Already Applied Checker</div>
+            <p class="hint" style="margin-bottom:10px">Paste a job title, company name, or URL to check if you&rsquo;ve already saved or applied for it.</p>
+            <input type="text" id="jac-input" placeholder="e.g. Junior Infrastructure Engineer Intellect Group &mdash; or paste a URL">
+            <div id="jac-results" class="jac-results"></div>
         </div>
 
         <!-- Filters -->
@@ -528,7 +537,21 @@
                 <option value="Rejected">Rejected</option>
                 <option value="Offer">Offer</option>
             </select>
+            <select id="job-sort-select" onchange="setJobSort(this.value)" class="job-status-select">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="applied">Applied first</option>
+                <option value="saved">Saved first</option>
+                <option value="interview">Interview first</option>
+                <option value="rejected-last">Rejected last</option>
+                <option value="company-az">Company A&ndash;Z</option>
+                <option value="title-az">Title A&ndash;Z</option>
+                <option value="score-high">Highest match score</option>
+            </select>
         </div>
+
+        <!-- Job Stats -->
+        <div id="job-stats" class="job-stats-bar"></div>
 
         <!-- Job List -->
         <div id="job-list" class="job-list"></div>
@@ -941,6 +964,7 @@
             <label for="jm-url">Job URL</label>
             <input type="text" id="jm-url" placeholder="https://&hellip;">
         </div>
+        <div id="jm-dup-warning" class="dup-warning hidden"></div>
         <div class="form-row-2">
             <div class="form-group">
                 <label for="jm-status">Status</label>

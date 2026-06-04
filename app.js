@@ -76,6 +76,8 @@ let organisePreview    = []; // in-memory only, not persisted
 let currentSubtasks    = []; // subtasks being edited in the breakdown modal
 let currentJobId       = null;
 let jobTagFilter       = '';
+let jobSearchFilter    = '';
+let jobSortOrder       = 'newest';
 
 // ===== STORAGE =====
 
@@ -1758,6 +1760,24 @@ function setRecoveryState(rs) {
 
 const JOB_STATUS_ORDER = { Offer: 0, Interview: 1, Applied: 2, Saved: 3, Rejected: 4 };
 
+function applySortOrder(jobs, order) {
+    const arr = [...jobs];
+    // Stable timestamp key: ISO createdAt, falling back to id (lexicographic, newer ids are larger)
+    const ts = j => j.createdAt || j.id || '';
+    switch (order) {
+        case 'oldest':        return arr.sort((a, b) => ts(a) < ts(b) ? -1 : ts(a) > ts(b) ? 1 : 0);
+        case 'applied':       return arr.sort((a, b) => (JOB_STATUS_ORDER[a.status] ?? 3) - (JOB_STATUS_ORDER[b.status] ?? 3));
+        case 'saved':         return arr.sort((a, b) => (a.status === 'Saved'     ? 0 : 1) - (b.status === 'Saved'     ? 0 : 1));
+        case 'interview':     return arr.sort((a, b) => (a.status === 'Interview' ? 0 : 1) - (b.status === 'Interview' ? 0 : 1));
+        case 'rejected-last': return arr.sort((a, b) => (a.status === 'Rejected'  ? 1 : 0) - (b.status === 'Rejected'  ? 1 : 0));
+        case 'company-az':    return arr.sort((a, b) => (a.company || '').localeCompare(b.company || ''));
+        case 'title-az':      return arr.sort((a, b) => (a.title   || '').localeCompare(b.title   || ''));
+        case 'score-high':    return arr.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+        case 'newest':
+        default:              return arr.sort((a, b) => ts(a) < ts(b) ? 1 : ts(a) > ts(b) ? -1 : 0);
+    }
+}
+
 function renderJobs() {
     const d = getDashToday();
     const countEl = document.getElementById('job-daily-count');
@@ -1771,27 +1791,30 @@ function renderJobs() {
         barEl.innerHTML = `<div class="job-daily-fill" style="width:${pct}%"></div>`;
     }
 
+    renderJobStats();
+
     const statusFilter = document.getElementById('job-status-filter')?.value || '';
     let jobs = [...state.jobs];
-    if (jobTagFilter) jobs = jobs.filter(j => (j.tags || []).includes(jobTagFilter));
-    if (statusFilter) jobs = jobs.filter(j => j.status === statusFilter);
-    jobs.sort((a, b) => (JOB_STATUS_ORDER[a.status] ?? 3) - (JOB_STATUS_ORDER[b.status] ?? 3));
+    if (jobTagFilter)    jobs = jobs.filter(j => (j.tags || []).includes(jobTagFilter));
+    if (statusFilter)    jobs = jobs.filter(j => j.status === statusFilter);
+    if (jobSearchFilter) jobs = jobs.filter(j => jobMatchesTextFilter(j, jobSearchFilter));
+    jobs = applySortOrder(jobs, jobSortOrder);
 
     const list = document.getElementById('job-list');
     if (!list) return;
 
     if (state.jobs.length === 0) {
-        list.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><p>No jobs saved yet. Use Quick Capture above to add your first opportunity.</p></div>`;
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">&#128188;</div><p>No jobs saved yet. Use Quick Capture above to add your first opportunity.</p></div>`;
         return;
     }
     if (jobs.length === 0) {
         list.innerHTML = `<div class="empty-state"><p>No jobs match the current filter. Clear filters to see all entries.</p></div>`;
         return;
     }
-    list.innerHTML = jobs.map(j => jobCardHTML(j)).join('');
+    list.innerHTML = jobs.map((j, i) => jobCardHTML(j, i + 1)).join('');
 }
 
-function jobCardHTML(j) {
+function jobCardHTML(j, num) {
     const tags = j.tags || [];
     const checklist = [
         { key: 'cvAdapted',           label: 'CV adapted' },
@@ -1804,11 +1827,19 @@ function jobCardHTML(j) {
     const today = todayKey();
     const isOverdue = j.followUpDate && j.followUpDate < today && j.status !== 'Rejected' && j.status !== 'Offer';
 
+    // Duplicate-applied detection (render-time, never persisted)
+    const selfApplied = j.status === 'Applied' || !!j.applied;
+    let dupApplied = null;
+    if (!selfApplied) {
+        const m = getAppliedDuplicateMatch(j);
+        if (m.level === 'exact' || m.level === 'high') dupApplied = m;
+    }
+
     return `
-<div class="job-card status-${j.status.toLowerCase()}" data-id="${esc(j.id)}">
+<div class="job-card status-${j.status.toLowerCase()}${dupApplied ? ' job-card-duplicate-applied' : ''}" data-id="${esc(j.id)}">
     <div class="job-card-top">
         <div class="job-card-main">
-            <div class="job-card-title">${esc(j.title)}</div>
+            <div class="job-card-title">${num != null ? `<span class="job-card-num">#${num}</span>` : ''}${esc(j.title)}</div>
             <div class="job-card-meta">
                 ${j.company ? `<span class="job-company">${esc(j.company)}</span>` : ''}
                 ${j.location ? `<span class="job-location">📍 ${esc(j.location)}</span>` : ''}
@@ -1834,6 +1865,12 @@ function jobCardHTML(j) {
         ).join('')}
     </div>
 
+    ${dupApplied ? `
+    <div class="job-duplicate-alert">
+        <span class="job-duplicate-alert-title">&#9888; Likely duplicate &mdash; already applied before</span>
+        ${dupApplied.reason ? `<span class="job-duplicate-alert-reason">${esc(dupApplied.reason)}</span>` : ''}
+    </div>` : ''}
+
     <details class="job-checklist">
         <summary>CV Checklist <span class="checklist-count">${doneCount}/5</span></summary>
         <div class="job-checklist-items">
@@ -1851,10 +1888,18 @@ function jobCardHTML(j) {
 
 function quickAddJob() {
     const titleEl = document.getElementById('jq-title');
-    const title = titleEl?.value.trim();
+    const title   = titleEl?.value.trim();
     if (!title) { showToast('Enter a job title first'); return; }
     const company = document.getElementById('jq-company')?.value.trim() || '';
     const url     = document.getElementById('jq-url')?.value.trim() || '';
+
+    // Duplicate protection for exact or high-probability matches
+    const dup = getBestJobDuplicateMatch({ title, company, url, excludeId: null });
+    if (dup.level === 'exact' || dup.level === 'high') {
+        const dupMsg = `This looks like a job you already saved or applied for.\n\n"${dup.job.title}"${dup.job.company ? ' at ' + dup.job.company : ''} — ${dup.job.status}\n\nSave anyway?`;
+        if (!confirm(dupMsg)) return;
+    }
+
     const job = {
         id: uid(), title, company, salary: '', location: '', url,
         status: 'Saved', matchScore: 3, notes: '', followUpDate: '',
@@ -1867,6 +1912,8 @@ function quickAddJob() {
     titleEl.value = '';
     if (document.getElementById('jq-company')) document.getElementById('jq-company').value = '';
     if (document.getElementById('jq-url'))     document.getElementById('jq-url').value = '';
+    const jqWarn = document.getElementById('jq-dup-warning');
+    if (jqWarn) jqWarn.classList.add('hidden');
     renderJobs();
     showToast('Job saved');
 }
@@ -1888,12 +1935,16 @@ function openJobModal(id) {
     document.querySelectorAll('[name="jm-tag"]').forEach(cb => {
         cb.checked = (j?.tags || []).includes(cb.value);
     });
+    const jmWarn = document.getElementById('jm-dup-warning');
+    if (jmWarn) jmWarn.classList.add('hidden');
     showModal('job-modal');
 }
 
 function closeJobModal() {
     hideModal('job-modal');
     currentJobId = null;
+    const jmWarn = document.getElementById('jm-dup-warning');
+    if (jmWarn) jmWarn.classList.add('hidden');
 }
 
 function saveJobModal() {
@@ -1960,6 +2011,7 @@ function toggleJobCheck(id, field, checked) {
         const row = card.querySelector(`input[onchange*="'${field}'"]`)?.closest('.job-check-item');
         if (row) row.classList.toggle('done', checked);
     }
+    if (field === 'applied') renderJobStats();
 }
 
 function setJobTagFilter(tag) {
@@ -1968,6 +2020,401 @@ function setJobTagFilter(tag) {
         btn.classList.toggle('active', btn.dataset.tag === tag);
     });
     renderJobs();
+}
+
+// ===== ALREADY APPLIED CHECKER =====
+
+// Generic role/level words that carry no signal when matching titles in isolation.
+const GENERIC_JOB_WORDS = new Set([
+    'junior', 'senior', 'graduate', 'trainee', 'engineer', 'support', 'analyst',
+    'consultant', 'manager', 'assistant', 'officer', 'specialist', 'administrator',
+    'infrastructure', 'cloud', 'cyber', 'cybersecurity', 'security', 'technology',
+    'operations',
+]);
+
+function normalizeText(value) {
+    if (!value) return '';
+    return value.toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function normalizeUrl(value) {
+    if (!value) return '';
+    return value.trim().toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .replace(/\/$/, '');
+}
+
+function getAllJobRecords() {
+    return state.jobs || [];
+}
+
+function getMeaningfulWords(text) {
+    return normalizeText(text)
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !GENERIC_JOB_WORDS.has(w));
+}
+
+// ---- Central duplicate-detection function ----
+// Returns { level: 'exact'|'high'|'possible'|'none', job, reason, score }
+function getBestJobDuplicateMatch({ title = '', company = '', url = '', location = '', salary = '', query = '', excludeId = null } = {}) {
+    const candidates = (state.jobs || []).filter(j => j.id !== excludeId);
+    let best = { level: 'none', job: null, reason: '', score: 0 };
+    for (const job of candidates) {
+        const r = _scoreJobForDuplicate({ title, company, url, location, salary, query }, job);
+        if (r.score > best.score) { best = { ...r, job }; }
+        if (best.level === 'exact') break;
+    }
+    return best;
+}
+
+// Checks only against already-applied jobs; used for render-time card warnings.
+// Returns { level, job, reason, score } where job (if any) has status Applied or applied===true.
+function getAppliedDuplicateMatch(job) {
+    const candidates = (state.jobs || []).filter(j =>
+        j.id !== job.id && (j.status === 'Applied' || j.applied)
+    );
+    let best = { level: 'none', job: null, reason: '', score: 0 };
+    for (const candidate of candidates) {
+        const r = _scoreJobForDuplicate(
+            { title: job.title || '', company: job.company || '', url: job.url || '',
+              location: job.location || '', salary: job.salary || '', query: '' },
+            candidate
+        );
+        if (r.score > best.score) { best = { ...r, job: candidate }; }
+        if (best.level === 'exact') break;
+    }
+    return best;
+}
+
+function _scoreJobForDuplicate({ title, company, url, location, salary, query }, job) {
+    const effectiveTitle   = title   || query;
+    const effectiveCompany = company || '';
+    const effectiveUrl     = url || (query.includes('://') || query.startsWith('www.') ? query : '');
+
+    // 1. URL exact match
+    const qUrl = normalizeUrl(effectiveUrl);
+    const jUrl = normalizeUrl(job.url || '');
+    if (qUrl.length > 5 && qUrl === jUrl) {
+        return { score: 100, level: 'exact', reason: 'Exact URL match' };
+    }
+
+    // 2. Company matching (compare company fields directly)
+    const jobCompText  = normalizeText(job.company || '');
+    const qCompText    = normalizeText(effectiveCompany);
+    const compWords    = jobCompText.split(/\s+/).filter(w => w.length > 2);
+    const qCompWords   = qCompText.split(/\s+/).filter(w => w.length > 2);
+    const compHits     = compWords.filter(w => qCompWords.includes(w)).length;
+    const compRatio    = compWords.length > 0 ? compHits / compWords.length : 0;
+    const companyMatch = compRatio >= 0.5 && compHits > 0;
+
+    // 3. Meaningful title matching
+    const jobMean = getMeaningfulWords(job.title || '');
+    const qMean   = getMeaningfulWords(effectiveTitle);
+    const titHits  = jobMean.filter(w => qMean.includes(w)).length;
+    const titRatio = jobMean.length > 0 ? titHits / jobMean.length : 0;
+    const titleStrongMatch = titHits >= 1 && titRatio >= 0.5;
+
+    // 4. All-word fallback for all-generic titles
+    const allJobTit = normalizeText(job.title || '').split(/\s+/).filter(w => w.length > 2);
+    const allQTit   = normalizeText(effectiveTitle).split(/\s+/).filter(w => w.length > 2);
+    const allHits   = jobMean.length === 0 ? allJobTit.filter(w => allQTit.includes(w)).length : 0;
+    const allRatio  = allJobTit.length > 0 ? allHits / allJobTit.length : 0;
+    const fallbackTitle = jobMean.length === 0 && allRatio >= 0.5 && allHits >= 2;
+    const effectiveTitleMatch = titleStrongMatch || fallbackTitle;
+
+    if (companyMatch && effectiveTitleMatch) {
+        return { score: 85, level: 'high', reason: 'Same company and similar title' };
+    }
+    if (companyMatch) {
+        return { score: 35, level: 'possible', reason: 'Company match' };
+    }
+    if (effectiveTitleMatch) {
+        let score  = titHits >= 2 ? 45 : 35;
+        let reason = 'Similar title only';
+        const jobLoc   = normalizeText(job.location || '');
+        const qLoc     = normalizeText(location || query);
+        const locWords = jobLoc.split(/\s+/).filter(w => w.length > 2);
+        if (locWords.length && locWords.some(w => qLoc.includes(w))) {
+            score += 15; reason = 'Similar title and location';
+        }
+        const jobSal = normalizeText(job.salary || '');
+        const qSal   = normalizeText(salary || '');
+        if (jobSal && qSal && jobSal.split(/\s+/).some(w => w.length > 1 && qSal.includes(w))) {
+            score += 10;
+        }
+        return { score, level: score >= 55 ? 'high' : 'possible', reason };
+    }
+
+    return { score: 0, level: 'none', reason: '' };
+}
+
+// ---- Live job-list text filter ----
+// Returns true if the job matches the free-text query across all fields.
+function jobMatchesTextFilter(job, query) {
+    if (!query || !query.trim()) return true;
+    const allText = [
+        job.title, job.company, job.location, job.salary,
+        job.notes, job.status, job.url, ...(job.tags || []),
+    ].map(v => normalizeText(v || '')).join(' ');
+    const qWords = normalizeText(query).split(/\s+/).filter(w => w.length > 0);
+    return qWords.every(w => allText.includes(w));
+}
+
+// ---- Broad free-text search for the checker ----
+// Returns [{ job, score, matchLevel, reason }] sorted by score desc.
+function searchJobsFreeText(query) {
+    if (!query || !query.trim()) return [];
+    const q      = normalizeText(query);
+    const qWords = q.split(/\s+/).filter(w => w.length > 1);
+    const qUrl   = normalizeUrl(query);
+    const qMean  = getMeaningfulWords(query);
+    const results = [];
+
+    for (const job of (state.jobs || [])) {
+        let score = 0, matchLevel = 'none', reason = '';
+
+        // URL exact
+        const jUrl = normalizeUrl(job.url || '');
+        if (qUrl.length > 5 && jUrl === qUrl) {
+            results.push({ job, score: 100, matchLevel: 'exact', reason: 'Exact URL match' });
+            continue;
+        }
+        // URL partial
+        if (qUrl.length > 8 && jUrl && jUrl.includes(qUrl)) {
+            score = 75; matchLevel = 'high'; reason = 'URL partial match';
+        }
+
+        if (matchLevel === 'none') {
+            const compText  = normalizeText(job.company || '');
+            const compWords = compText.split(/\s+/).filter(w => w.length > 2);
+            const compHits  = compWords.filter(w => qWords.includes(w)).length;
+            const compMatch = compWords.length > 0 && (compHits / compWords.length) >= 0.5 && compHits > 0;
+
+            const jobMean   = getMeaningfulWords(job.title || '');
+            const titHits   = jobMean.filter(w => qMean.includes(w)).length;
+            const titRatio  = jobMean.length > 0 ? titHits / jobMean.length : 0;
+            const titleStrong = jobMean.length > 0 && titHits >= 1 && titRatio >= 0.5;
+
+            // Fallback for all-generic titles
+            const allJobTit  = normalizeText(job.title || '').split(/\s+/).filter(w => w.length > 2);
+            const allTitHits = jobMean.length === 0 ? allJobTit.filter(w => qWords.includes(w)).length : 0;
+            const fallback   = jobMean.length === 0 &&
+                allJobTit.length > 0 && (allTitHits / allJobTit.length) >= 0.5 && allTitHits >= 2;
+
+            if (compMatch && (titleStrong || fallback)) {
+                score = 85; matchLevel = 'high'; reason = 'Same company and similar title';
+            } else if (titleStrong || fallback) {
+                score = 50; matchLevel = 'possible'; reason = 'Similar title only';
+            } else if (compMatch) {
+                score = 30; matchLevel = 'possible'; reason = 'Company match';
+            } else {
+                // Broad field search — any meaningful word found anywhere
+                const allText = [
+                    job.title, job.company, job.location, job.salary,
+                    job.notes, job.status, job.url, ...(job.tags || []),
+                ].map(v => normalizeText(v || '')).join(' ');
+                const allWords   = allText.split(/\s+/).filter(w => w.length > 1);
+                const longQWords = qWords.filter(w => w.length > 2);
+                const hits = longQWords.filter(w => allWords.includes(w)).length;
+                const ratio = longQWords.length > 0 ? hits / longQWords.length : 0;
+                if (ratio >= 0.5 && hits >= 1) {
+                    score = Math.max(15, Math.floor(ratio * 28));
+                    matchLevel = 'possible'; reason = 'Partial match';
+                }
+            }
+        }
+
+        if (matchLevel !== 'none') results.push({ job, score, matchLevel, reason });
+    }
+
+    return results.sort((a, b) => b.score - a.score);
+}
+
+function searchAppliedJobs(query) {
+    return searchJobsFreeText(query);
+}
+
+function renderAppliedSearchResults(results) {
+    const container = document.getElementById('jac-results');
+    if (!container) return;
+
+    if (!results || results.length === 0) {
+        const noJobsYet = (state.jobs || []).length === 0;
+        container.innerHTML = `
+            <div class="jac-result-card jac-result-none">
+                <div class="jac-result-label">${noJobsYet ? 'No jobs saved yet' : 'No application found'}</div>
+                <p class="jac-result-msg">${noJobsYet
+                    ? 'Add your first job using Quick Capture above.'
+                    : 'No matching job application was found in your records. You may not have applied for this one yet.'}</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = results.slice(0, 6).map(r => {
+        const j          = r.job;
+        const level      = r.matchLevel || 'possible';
+        const isStrong   = level === 'exact' || level === 'high';
+        const cardClass  = isStrong ? 'jac-result-strong' : 'jac-result-possible';
+        const levelLabel = level === 'exact' ? 'Exact Match' : level === 'high' ? 'High Probability' : 'Possible Match';
+        const createdDate = j.createdAt
+            ? new Date(j.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+            : '';
+        const notesPreview = j.notes ? (j.notes.length > 80 ? j.notes.slice(0, 80) + '…' : j.notes) : '';
+
+        return `
+            <div class="jac-result-card ${cardClass}">
+                <div class="jac-result-header">
+                    <span class="jac-result-label">${levelLabel}</span>
+                    <span class="job-status-badge jstatus-${j.status.toLowerCase()}">${esc(j.status)}</span>
+                    ${r.reason ? `<span class="jac-result-reason">${esc(r.reason)}</span>` : ''}
+                </div>
+                <div class="jac-result-title">${esc(j.title)}</div>
+                ${j.company  ? `<div class="jac-result-company">${esc(j.company)}</div>` : ''}
+                <div class="jac-result-details">
+                    ${j.location  ? `<span>&#128205; ${esc(j.location)}</span>`  : ''}
+                    ${j.salary    ? `<span>&#128176; ${esc(j.salary)}</span>`    : ''}
+                    ${createdDate ? `<span>&#128197; ${createdDate}</span>`      : ''}
+                    ${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" class="jac-result-link">View &#8599;</a>` : ''}
+                </div>
+                ${notesPreview ? `<div class="jac-result-notes">${esc(notesPreview)}</div>` : ''}
+                <button class="btn btn-outline btn-sm" onclick="openJobModal('${esc(j.id)}')">Open Job Entry</button>
+            </div>`;
+    }).join('');
+}
+
+// Builds rich HTML content for a duplicate-warning box.
+function buildDupWarningHTML(match) {
+    const j = match.job;
+    const msg = match.level === 'exact'
+        ? 'Exact URL match. This job is already in your records.'
+        : match.level === 'high'
+        ? 'High probability: you already saved or applied for this job.'
+        : 'Possible similar job found. Check before applying again.';
+    const levelLabel = match.level === 'exact' ? 'Exact Match'
+        : match.level === 'high' ? 'High Probability' : 'Possible Match';
+    const createdDate = j.createdAt
+        ? new Date(j.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '';
+    return `
+        <div class="dup-warn-header"><strong>${msg}</strong></div>
+        <div class="dup-warn-body">
+            <span class="dup-warn-level-badge">${levelLabel}</span>
+            <span class="dup-warn-reason">${esc(match.reason)}</span>
+        </div>
+        <div class="dup-warn-title">${esc(j.title)}</div>
+        ${j.company ? `<div class="dup-warn-company">${esc(j.company)}</div>` : ''}
+        <div class="dup-warn-details">
+            <span class="job-status-badge jstatus-${j.status.toLowerCase()}">${esc(j.status)}</span>
+            ${j.location   ? `<span class="dup-warn-detail">&#128205; ${esc(j.location)}</span>`  : ''}
+            ${j.salary     ? `<span class="dup-warn-detail">&#128176; ${esc(j.salary)}</span>`    : ''}
+            ${createdDate  ? `<span class="dup-warn-detail">&#128197; ${createdDate}</span>`      : ''}
+        </div>
+        <div class="dup-warn-actions">
+            ${j.url ? `<a href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">&#8599; View listing</a>` : ''}
+            <button class="btn btn-outline btn-sm" onclick="openJobModal('${esc(j.id)}')">Open entry</button>
+        </div>`;
+}
+
+function checkJobDuplicateWarning(titleVal, companyVal, urlVal, warningId, excludeId) {
+    const warning = document.getElementById(warningId);
+    if (!warning) return;
+    if (!titleVal && !companyVal && !urlVal) { warning.classList.add('hidden'); return; }
+
+    const match = getBestJobDuplicateMatch({ title: titleVal, company: companyVal, url: urlVal, excludeId });
+    if (match.level === 'none') { warning.classList.add('hidden'); return; }
+
+    const isStrong = match.level === 'exact' || match.level === 'high';
+    warning.className = 'dup-warning' + (isStrong ? ' dup-warning-danger' : '');
+    warning.innerHTML = buildDupWarningHTML(match);
+}
+
+// ---- Job statistics ----
+function renderJobStats() {
+    const el = document.getElementById('job-stats');
+    if (!el) return;
+    const jobs      = state.jobs || [];
+    const total     = jobs.length;
+    const appliedIds = new Set(jobs.filter(j => j.status === 'Applied' || j.applied).map(j => j.id));
+    const applied   = appliedIds.size;
+    const saved     = jobs.filter(j => j.status === 'Saved').length;
+    const interview = jobs.filter(j => j.status === 'Interview').length;
+    const rejected  = jobs.filter(j => j.status === 'Rejected').length;
+    const offers    = jobs.filter(j => j.status === 'Offer').length;
+
+    el.innerHTML = [
+        { label: 'Total',     val: total,     cls: '' },
+        { label: 'Applied',   val: applied,   cls: 'stat-applied' },
+        { label: 'Saved',     val: saved,     cls: 'stat-saved' },
+        { label: 'Interview', val: interview, cls: 'stat-interview' },
+        { label: 'Rejected',  val: rejected,  cls: 'stat-rejected' },
+        { label: 'Offer',     val: offers,    cls: 'stat-offer' },
+    ].map(s => `
+        <div class="job-stat-item ${s.cls}">
+            <span class="job-stat-val">${s.val}</span>
+            <span class="job-stat-label">${s.label}</span>
+        </div>`).join('');
+}
+
+// ---- Sort order ----
+function setJobSort(value) {
+    jobSortOrder = value;
+    renderJobs();
+}
+
+function bindAppliedCheckerEvents() {
+    const jacInput = document.getElementById('jac-input');
+    if (jacInput) {
+        let debounce;
+        const runSearch = () => {
+            const q = jacInput.value.trim();
+            const container = document.getElementById('jac-results');
+            if (!q) {
+                if (container) container.innerHTML = '';
+                jobSearchFilter = '';
+                renderJobs();
+                return;
+            }
+            jobSearchFilter = q;
+            renderJobs();
+            renderAppliedSearchResults(searchJobsFreeText(q));
+        };
+        jacInput.addEventListener('input',   () => { clearTimeout(debounce); debounce = setTimeout(runSearch, 250); });
+        jacInput.addEventListener('keydown', e  => { if (e.key === 'Enter') { clearTimeout(debounce); runSearch(); } });
+    }
+
+    // Quick Capture duplicate warning
+    ['jq-title', 'jq-company', 'jq-url'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+            checkJobDuplicateWarning(
+                document.getElementById('jq-title')?.value.trim()   || '',
+                document.getElementById('jq-company')?.value.trim() || '',
+                document.getElementById('jq-url')?.value.trim()     || '',
+                'jq-dup-warning', null
+            );
+        });
+    });
+
+    // Modal duplicate warning
+    ['jm-title', 'jm-company', 'jm-url'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+            const rawId     = document.getElementById('jm-id')?.value;
+            const excludeId = rawId && rawId.trim() ? rawId : null;
+            checkJobDuplicateWarning(
+                document.getElementById('jm-title')?.value.trim()   || '',
+                document.getElementById('jm-company')?.value.trim() || '',
+                document.getElementById('jm-url')?.value.trim()     || '',
+                'jm-dup-warning', excludeId
+            );
+        });
+    });
 }
 
 // ===== BACKUP STATUS & AUTO-BACKUP =====
@@ -2043,6 +2490,7 @@ function init() {
         document.body.classList.remove('print-howto');
     });
 
+    bindAppliedCheckerEvents();
     renderBackupStatus();
     scheduleAutoBackup();
     renderRecoveryDashboard();
