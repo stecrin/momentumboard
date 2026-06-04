@@ -75,9 +75,10 @@ let timerInterval      = null;
 let organisePreview    = []; // in-memory only, not persisted
 let currentSubtasks    = []; // subtasks being edited in the breakdown modal
 let currentJobId       = null;
-let jobTagFilter       = '';
-let jobSearchFilter    = '';
-let jobSortOrder       = 'newest';
+let jobTagFilter              = '';
+let jobSearchFilter           = '';
+let jobSortOrder              = 'newest';
+let lastSmartJobCaptureResult = null; // cleared after save or manual clear
 
 // ===== STORAGE =====
 
@@ -1900,15 +1901,27 @@ function quickAddJob() {
         if (!confirm(dupMsg)) return;
     }
 
+    // Enrich with Smart Job Capture result if it still matches what's in the fields
+    const sjc   = lastSmartJobCaptureResult;
+    const sjcOk = _sjcResultMatchesCapture(sjc, title, company);
+
     const job = {
-        id: uid(), title, company, salary: '', location: '', url,
-        status: 'Saved', matchScore: 3, notes: '', followUpDate: '',
-        tags: [], cvAdapted: false, linkedinReviewed: false,
+        id:          uid(),
+        title, company, url,
+        salary:      sjcOk && sjc.salary   ? sjc.salary               : '',
+        location:    sjcOk && sjc.location ? sjc.location             : '',
+        status:      'Saved',
+        matchScore:  sjcOk && sjc.score    ? sjc.score                : 3,
+        notes:       sjcOk && sjc.note     ? sjc.note                 : '',
+        followUpDate: '',
+        tags:        sjcOk && sjc.tags && sjc.tags.length ? [...sjc.tags] : [],
+        cvAdapted: false, linkedinReviewed: false,
         coverLetterPrepared: false, followUpPlanned: false, applied: false,
-        createdAt: new Date().toISOString(),
+        createdAt:   new Date().toISOString(),
     };
     state.jobs.unshift(job);
     persist();
+    lastSmartJobCaptureResult = null; // consumed — prevent stale reuse on next unrelated save
     titleEl.value = '';
     if (document.getElementById('jq-company')) document.getElementById('jq-company').value = '';
     if (document.getElementById('jq-url'))     document.getElementById('jq-url').value = '';
@@ -1921,20 +1934,34 @@ function quickAddJob() {
 function openJobModal(id) {
     currentJobId = id;
     const j = id ? state.jobs.find(j => j.id === id) : null;
+
+    // For new jobs, read Quick Capture fields and check for a cached SJC result
+    const isNew    = !id;
+    const qTitle   = isNew ? (document.getElementById('jq-title')?.value.trim()   || '') : '';
+    const qCompany = isNew ? (document.getElementById('jq-company')?.value.trim() || '') : '';
+    const qUrl     = isNew ? (document.getElementById('jq-url')?.value.trim()     || '') : '';
+    const sjc      = isNew ? lastSmartJobCaptureResult : null;
+    const sjcOk    = isNew && _sjcResultMatchesCapture(sjc,
+        qTitle   || (sjc?.title   || ''),
+        qCompany || (sjc?.company || ''));
+
     document.getElementById('job-modal-title').textContent = id ? 'Edit Job Entry' : 'Add Job Entry';
-    document.getElementById('jm-title').value     = j?.title        || '';
-    document.getElementById('jm-company').value   = j?.company      || '';
-    document.getElementById('jm-salary').value    = j?.salary       || '';
-    document.getElementById('jm-location').value  = j?.location     || '';
-    document.getElementById('jm-url').value       = j?.url          || '';
-    document.getElementById('jm-status').value    = j?.status       || 'Saved';
-    document.getElementById('jm-match').value     = j?.matchScore   || 3;
-    document.getElementById('jm-followup').value  = j?.followUpDate || '';
-    document.getElementById('jm-notes').value     = j?.notes        || '';
-    document.getElementById('jm-id').value        = id              || '';
+    document.getElementById('jm-title').value     = j ? (j.title        || '') : (qTitle   || (sjcOk ? sjc.title   || '' : ''));
+    document.getElementById('jm-company').value   = j ? (j.company      || '') : (qCompany || (sjcOk ? sjc.company || '' : ''));
+    document.getElementById('jm-salary').value    = j ? (j.salary       || '') : (sjcOk ? sjc.salary   || '' : '');
+    document.getElementById('jm-location').value  = j ? (j.location     || '') : (sjcOk ? sjc.location || '' : '');
+    document.getElementById('jm-url').value       = j ? (j.url          || '') : (qUrl    || (sjcOk ? sjc.url     || '' : ''));
+    document.getElementById('jm-status').value    = j ? (j.status       || 'Saved') : 'Saved';
+    document.getElementById('jm-match').value     = j ? (j.matchScore   || 3)      : (sjcOk ? sjc.score || 3 : 3);
+    document.getElementById('jm-followup').value  = j ? (j.followUpDate || '') : '';
+    document.getElementById('jm-notes').value     = j ? (j.notes        || '') : (sjcOk ? sjc.note || '' : '');
+    document.getElementById('jm-id').value        = id || '';
+
+    const modalTags = j?.tags || (sjcOk ? (sjc.tags || []) : []);
     document.querySelectorAll('[name="jm-tag"]').forEach(cb => {
-        cb.checked = (j?.tags || []).includes(cb.value);
+        cb.checked = modalTags.includes(cb.value);
     });
+
     const jmWarn = document.getElementById('jm-dup-warning');
     if (jmWarn) jmWarn.classList.add('hidden');
     showModal('job-modal');
@@ -2020,6 +2047,497 @@ function setJobTagFilter(tag) {
         btn.classList.toggle('active', btn.dataset.tag === tag);
     });
     renderJobs();
+}
+
+// ===== SMART JOB CAPTURE =====
+
+// Keywords scored against pasted job text to suggest match level.
+const SJC_HIGH_FIT = [
+    'infrastructure', 'cloud', 'azure', 'microsoft 365', 'm365', 'entra id', 'intune',
+    'active directory', 'identity', 'mfa', 'endpoint security', 'cybersecurity',
+    'soc', 'siem', 'linux', 'docker', 'kubernetes', 'python', 'bash', 'powershell',
+    'automation', 'devops', 'devsecops', 'networking', 'vpn', 'firewall', 'monitoring',
+    'zabbix', 'grafana', 'support engineer', 'platform engineer', 'systems engineer',
+    'site reliability', 'operations engineer', 'security engineer',
+];
+
+const SJC_MED_FIT = [
+    'it support', 'help desk', 'helpdesk', 'service desk', 'windows server',
+    'office 365', 'troubleshoot', 'server', 'vmware', 'virtualisation',
+    'virtualization', 'network engineer', 'network administrator',
+];
+
+// Regex for lines that look like job title words
+const SJC_TITLE_KW = /\b(engineer|analyst|administrator|support|infrastructure|cloud|cyber|security|devops|platform|technician|consultant|graduate|junior|senior|developer|manager|lead|architect|specialist|officer|soc|sre|systems?|network|operations|coordinator|helpdesk)\b/i;
+
+// Lines that are clearly noise and should be skipped during extraction
+const SJC_SKIP = /^(apply|easy\s*apply|posted|full.?time|part.?time|contract|permanent|remote|hybrid|on.?site|united\s*kingdom|england|linkedin|about\s*(the\s*)?job|about\s*(the\s*)?company|save|share|report|follow|connect|message|promoted|quick\s*apply|actively\s*(recruiting|hiring)|responses?\s+managed|response\s+managed|your\s+profile|show\s+match|is\s+this\s+information|\bbeta\b|company\s+logo|\d+\s*(applicant|view|follower|day|hour|month|year|connection)|\d+\+?\s*(employees|people))/i;
+
+const SJC_LOCATION_KW = /\b(london|essex|colchester|cambridge|bristol|manchester|birmingham|edinburgh|glasgow|leeds|sheffield|newcastle|liverpool|oxford|reading|york|cardiff|coventry|nottingham|southampton|brighton|norwich|uk|united kingdom|england|remote|hybrid|on.?site)\b/i;
+
+function extractJobTitle(lines) {
+    // First pass: prefer lines with known job-title words
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line || line.length < 4 || line.length > 100) continue;
+        if (SJC_SKIP.test(line)) continue;
+        if (/^\d/.test(line)) continue;
+        if (SJC_TITLE_KW.test(line)) return { title: line, titleIndex: i };
+    }
+    // Fallback: first short clean non-numeric line
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line || line.length < 4 || line.length > 80) continue;
+        if (SJC_SKIP.test(line)) continue;
+        if (/^[\d\W]+$/.test(line)) continue;
+        return { title: line, titleIndex: i };
+    }
+    return { title: null, titleIndex: -1 };
+}
+
+// Returns true only for strings that look like a proper company name.
+// Rejects sentence fragments, metadata lines, and long descriptive text.
+function isLikelyCompanyName(line) {
+    if (!line || line.length < 2 || line.length > 60) return false;
+
+    const words = line.trim().split(/\s+/);
+    if (words.length > 6) return false;
+
+    // Must not end with sentence punctuation
+    if (/[.,:;]$/.test(line)) return false;
+
+    // Must not contain separator characters (these are compound metadata lines)
+    if (/[·•|]/.test(line)) return false;
+
+    // Reject single-word work-type or employment-type tokens
+    if (/^(remote|hybrid|on.?site|full.?time|part.?time|contract|permanent|volunteer)$/i.test(line.trim())) return false;
+
+    const t = line.toLowerCase();
+
+    // Reject any line that mentions "linkedin" in a phrase — these are always metadata
+    // (Exception: the company "LinkedIn" itself, which is just the word alone)
+    if (/\blinkedin\b/i.test(t) && t.trim() !== 'linkedin') return false;
+
+    // Reject if it contains any phrase that indicates a sentence or description
+    const SENTENCE_PHRASES = [
+        'such as', 'topics', 'sessions', 'responsibilities', 'requirements',
+        'about the', 'the role', 'the job', 'we are', 'we offer', 'we provide',
+        'featuring', 'increasing', 'delivering', 'driving', 'including',
+        'psychology', 'leadership', 'engagement', 'personalisation',
+        'people clicked', 'clicked apply', 'applicants', 'easy apply',
+        'responses managed', 'managed off', 'your profile', 'show match',
+        'is this information', 'missing information',
+    ];
+    if (SENTENCE_PHRASES.some(p => t.includes(p))) return false;
+
+    // Reject salary and time metadata
+    if (/£|\$|salary|per annum|gbp|\bago\b|\bposted\b|\bviews?\b|\bweeks?\b|\bdays?\b|\bmonths?\b/i.test(line)) return false;
+
+    // At least one word must start with a capital letter (proper nouns)
+    if (!/[A-Z]/.test(line)) return false;
+
+    // Reject if too few words are capitalised — company names are proper nouns
+    // e.g. "wide personal sessions" has 1/3 = 0.33 cap ratio → reject
+    // Allow single-word companies (Accenture, Microsoft) and short names (BT Group)
+    const capCount = words.filter(w => /^[A-Z]/.test(w)).length;
+    if (words.length > 2 && capCount / words.length < 0.4) return false;
+
+    return true;
+}
+
+function extractCompany(lines, titleIndex, text) {
+    // Pattern 0: LinkedIn "Company logo for, COMPANY_NAME." — highest-confidence signal
+    // The clean name usually appears on the very next line, so prefer that.
+    const logoM = text.match(/company\s+logo\s+for[,\s]+([^\n.!,]{1,50})[.,!]?\s*\n?\s*([^\n]*)?/i);
+    if (logoM) {
+        const fromLogo  = logoM[1].trim().replace(/[.,!]+$/, '');
+        const nextLine  = (logoM[2] || '').trim().replace(/[.,!]+$/, '');
+        // Prefer clean next-line repeat of the same name (common LinkedIn layout)
+        if (isLikelyCompanyName(nextLine) && nextLine.toLowerCase() === fromLogo.toLowerCase()) return nextLine;
+        if (isLikelyCompanyName(nextLine)) return nextLine;
+        if (isLikelyCompanyName(fromLogo)) return fromLogo;
+    }
+
+    // Pattern 1: labelled field "Company: X" anywhere in the text
+    const labelM = text.match(/(?:company|employer|organisation|client)\s*[:\-]\s*([^\n,]{2,60})/i);
+    if (labelM) {
+        const candidate = labelM[1].trim();
+        if (isLikelyCompanyName(candidate)) return candidate;
+    }
+
+    // Pattern 2: "X is hiring / recruiting"
+    const hiringM = text.match(/^(.{2,60}?)\s+(?:is\s+)?(?:hiring|recruiting|looking for)/im);
+    if (hiringM) {
+        const candidate = hiringM[1].trim();
+        if (isLikelyCompanyName(candidate)) return candidate;
+    }
+
+    // Pattern 3: lines BEFORE the detected title (LinkedIn often puts company name above the title)
+    if (titleIndex > 0) {
+        for (let i = titleIndex - 1; i >= Math.max(0, titleIndex - 5); i--) {
+            const candidate = lines[i];
+            if (!candidate) continue;
+            if (SJC_SKIP.test(candidate)) continue;         // rejects "Company logo for…", "Apply", etc.
+            if (SJC_LOCATION_KW.test(candidate)) continue;
+            if (/^\d/.test(candidate)) continue;
+            if (isLikelyCompanyName(candidate)) return candidate;
+        }
+    }
+
+    // Pattern 4: lines immediately AFTER the detected title (other job board layouts)
+    if (titleIndex >= 0) {
+        for (let i = titleIndex + 1; i <= Math.min(titleIndex + 4, lines.length - 1); i++) {
+            const candidate = lines[i];
+            if (!candidate) continue;
+            if (SJC_SKIP.test(candidate)) continue;
+            if (SJC_LOCATION_KW.test(candidate)) continue;
+            if (/^\d/.test(candidate)) continue;
+            if (isLikelyCompanyName(candidate)) return candidate;
+        }
+    }
+
+    return null;
+}
+
+function extractJobUrl(text) {
+    const all = text.match(/https?:\/\/[^\s"'<>)\]]+/g) || [];
+    if (!all.length) return null;
+    const jobSite = all.find(u =>
+        /linkedin\.com\/jobs|indeed\.com|reed\.co|totaljobs|cv-library|glassdoor|monster\.co|jobsite|simplyhired|adzuna|workday|greenhouse\.io|lever\.co|taleo|smartrecruiters|breezyhr/i.test(u)
+    );
+    return jobSite || all[0];
+}
+
+// Removes LinkedIn metadata phrases from location lines that contain "·".
+// Keeps location text and work-mode words (Remote / Hybrid / On-site).
+function cleanLinkedInLocationLine(line) {
+    if (!line.includes('·')) return line.trim();
+
+    const METADATA = /\b(ago|posted|applicant|clicked|apply|view|promoted|promoting|actively|recruiting|recruiting|early|first|among|be\s+an|week|day|month|hour|minute|over\s+\d+|^\d+)\b/i;
+
+    const parts = line.split('·').map(p => p.trim()).filter(Boolean);
+    const clean = parts.filter(p => !METADATA.test(p) && !/^\d+/.test(p));
+
+    if (!clean.length) return line.trim();
+
+    // Separate the geographic location from the work-type tag (Hybrid/Remote/On-site)
+    const WORK_TYPE = /^\s*(remote|hybrid|on.?site)\s*$/i;
+    const locParts  = clean.filter(p => !WORK_TYPE.test(p));
+    const workParts = clean.filter(p => WORK_TYPE.test(p));
+
+    const result = locParts.join(', ');
+    return workParts.length ? `${result} · ${workParts[0]}` : result;
+}
+
+function extractJobLocation(lines) {
+    for (const line of lines) {
+        // Allow longer lines since LinkedIn location lines contain metadata we'll strip
+        if (line.length < 2 || line.length > 300) continue;
+        if (SJC_LOCATION_KW.test(line)) return cleanLinkedInLocationLine(line);
+    }
+    return null;
+}
+
+function extractJobSalary(text) {
+    const patterns = [
+        /£\s*[\d,]+\s*[kK]?\s*[-–—to]+\s*£?\s*[\d,]+\s*[kK]?(?:\s*(?:per annum|p\.a\.|\/yr|\/year|a year))?/i,
+        /£\s*[\d,]+\s*[kK]?(?:\s*(?:per annum|p\.a\.|\/yr|\/year|a year))?/i,
+        /(?:salary|package)\s*[:\-]?\s*£?\s*[\d,]+\s*[kK]?(?:\s*(?:per annum|p\.a\.))?/i,
+        /up\s*to\s*£\s*[\d,]+\s*[kK]?/i,
+        /\b\d{2,3}(?:,\d{3})?\s*[-–—]\s*\d{2,3}(?:,\d{3})?\s*GBP\b/i,
+    ];
+    for (const p of patterns) {
+        const m = text.match(p);
+        if (m) return m[0].trim();
+    }
+    return null;
+}
+
+function _sjcSalaryOver40k(salaryStr) {
+    if (!salaryStr) return false;
+    const kNums = salaryStr.match(/(\d+)\s*k/gi) || [];
+    for (const km of kNums) {
+        if (parseInt(km, 10) >= 40) return true;
+    }
+    const fullNums = salaryStr.match(/\d[\d,]{4,}/g) || [];
+    for (const fn of fullNums) {
+        if (parseInt(fn.replace(/,/g, ''), 10) >= 40000) return true;
+    }
+    return false;
+}
+
+// ---- Work mode & location fit ----
+
+// Preferred commutable areas for Colchester/London base
+const SJC_PREFERRED_LOC = /\b(colchester|essex|london|chelmsford|ipswich|cambridge|hertfordshire|hertford|watford|luton|norwich|suffolk|kent|stevenage|harlow|basildon|southend|brentwood|braintree|felixstowe|clacton)\b/i;
+
+// Far / high-risk areas for regular commuting from Colchester/London
+const SJC_RISK_LOC = /\b(newcastle|manchester|birmingham|bristol|leeds|liverpool|sheffield|scotland|wales|cardiff|edinburgh|glasgow|sunderland|durham|middlesbrough|york|bradford|hull|nottingham|leicester|coventry|derby|stoke|wolverhampton|swansea|aberdeen|dundee|belfast|gateshead|sunderland|teesside|tyne|wigan|blackpool|blackburn|preston|bolton|salford|oldham|rochdale)\b/i;
+
+// Returns 'remote' | 'hybrid' | 'onsite' | 'unknown'
+function detectWorkMode(text, location) {
+    const combined = ((text || '') + ' ' + (location || '')).toLowerCase();
+    // Hybrid beats bare "remote" (e.g. hybrid with some remote days)
+    if (/\bhybrid\b|\d+\s*days?\s*(in\s*)?office|\d+\s*days?\s*a\s*week\s*(in\s*)?office|office\s+days|blended\s+working/.test(combined)) return 'hybrid';
+    // Fully remote / work from home signals
+    if (/\bfully\s+remote\b|\bwork\s+from\s+home\b|\bwfh\b|\bhome.?based\b|\bremote.?first\b|\bremote.?only\b|\bremote\b/.test(combined)) return 'remote';
+    // On-site signals
+    if (/\bon.?site\b|\boffice.?based\b|\bfull.?time\s+office\b/.test(combined)) return 'onsite';
+    return 'unknown';
+}
+
+// Returns { level: 'ok'|'warning'|'blocked'|'unknown', label, message }
+function assessLocationFit(location, workMode) {
+    // Remote is always fine regardless of listed location
+    if (workMode === 'remote') {
+        return {
+            level:   'ok',
+            label:   'Remote OK',
+            message: 'Fully remote or remote-friendly role. No commute risk.',
+        };
+    }
+
+    if (!location || !location.trim()) {
+        return {
+            level:   'unknown',
+            label:   'Unknown location',
+            message: 'Location could not be confidently assessed.',
+        };
+    }
+
+    const isPreferred = SJC_PREFERRED_LOC.test(location);
+    const isRisk      = SJC_RISK_LOC.test(location);
+
+    if (isRisk) {
+        if (workMode === 'hybrid' || workMode === 'onsite') {
+            return {
+                level:   'blocked',
+                label:   'Location Risk',
+                message: 'LOCATION RISK — This role appears too far for regular hybrid/on-site commuting from Colchester/London.',
+            };
+        }
+        // Unknown work mode but distant location
+        return {
+            level:   'warning',
+            label:   'Location Risk',
+            message: 'Location may be too far unless the role is fully remote. Verify work mode before applying.',
+        };
+    }
+
+    if (isPreferred) {
+        return {
+            level:   'ok',
+            label:   'Commute OK',
+            message: 'Location appears suitable for Colchester/London target area.',
+        };
+    }
+
+    return {
+        level:   'unknown',
+        label:   'Unknown location',
+        message: 'Location could not be confidently assessed. Check if commuting is realistic.',
+    };
+}
+
+function suggestJobTags(text, salary) {
+    const t = text.toLowerCase();
+    const tags = [];
+    if (/\bhybrid\b/.test(t))           tags.push('Hybrid');
+    else if (/\bremote\b/.test(t))      tags.push('Remote');
+    else if (/\bon.?site\b/.test(t))    tags.push('On-site');
+    if (_sjcSalaryOver40k(salary))      tags.push('£40k+');
+    if (/\bcyber|cybersec|\bsoc\b|security operations/.test(t)) tags.push('Cybersecurity');
+    else if (/it support|help.?desk|service.?desk|1st line|2nd line|first.?line/.test(t)) tags.push('IT Support');
+    if (/\burgent\b|immediate start|\basap\b/.test(t)) tags.push('Urgent');
+    return tags;
+}
+
+function suggestJobMatchScore(text) {
+    const t     = text.toLowerCase();
+    const high  = SJC_HIGH_FIT.filter(kw => t.includes(kw)).length;
+    const med   = SJC_MED_FIT.filter(kw => t.includes(kw)).length;
+    if (high >= 4 || (high >= 2 && med >= 3)) return 5;
+    if (high >= 2 || (high >= 1 && med >= 2)) return 4;
+    if (high >= 1 || med >= 2)                return 3;
+    if (med  >= 1)                            return 2;
+    return 1;
+}
+
+function buildSmartJobNote(score, locationFit) {
+    // Location-blocked overrides normal note
+    if (locationFit && locationFit.level === 'blocked') {
+        return 'LOCATION RISK — This role appears too far for hybrid/on-site commuting from Colchester/London. Apply only if it is fully remote or relocation is realistic.';
+    }
+
+    const base = {
+        5: 'HIGH PRIORITY — Strong alignment with cloud, infrastructure, security and automation. Apply promptly.',
+        4: 'GOOD FIT — Relevant IT/infrastructure/security opportunity with solid exposure. Worth applying.',
+        3: 'POSSIBLE FIT — Some overlap with IT/support skills. Review requirements carefully before applying.',
+        2: 'LOW PRIORITY — Limited match with current direction. Apply only if time allows.',
+        1: 'NOT RECOMMENDED — Minimal alignment with cloud/infrastructure/security background.',
+    }[score] || 'POSSIBLE FIT — Some overlap with IT/support skills. Review requirements carefully.';
+
+    if (locationFit && locationFit.level === 'warning') {
+        return base + ' Note: check work mode carefully — location may be too far for non-remote roles.';
+    }
+
+    return base;
+}
+
+function parseSmartJobCaptureText(text) {
+    const lines                 = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const { title, titleIndex } = extractJobTitle(lines);
+    const company               = extractCompany(lines, titleIndex, text);
+    const url                   = extractJobUrl(text);
+    const location              = extractJobLocation(lines);
+    const salary                = extractJobSalary(text);
+
+    // Work mode & location fit (computed before score so we can cap it)
+    const workMode    = detectWorkMode(text, location);
+    const locationFit = assessLocationFit(location, workMode);
+
+    // Base tags + location risk tag if warranted
+    const tags = suggestJobTags(text, salary);
+    if ((locationFit.level === 'blocked' || locationFit.level === 'warning') && !tags.includes('Location Risk')) {
+        tags.push('Location Risk');
+    }
+
+    // Raw keyword score, then apply location cap
+    let score = suggestJobMatchScore(text);
+    if (locationFit.level === 'blocked') score = Math.min(score, 2);
+    if (locationFit.level === 'warning') score = Math.min(score, 3);
+
+    const note              = buildSmartJobNote(score, locationFit);
+    const uncertainties     = [];
+    if (!title)   uncertainties.push('Job title could not be confidently detected.');
+    if (!company) uncertainties.push('Company name could not be confidently detected.');
+    if (!url)     uncertainties.push('No URL found in the pasted text.');
+
+    return { title, company, url, location, salary, tags, score, note, uncertainties, workMode, locationFit };
+}
+
+function renderSmartJobCapturePreview(result) {
+    const container = document.getElementById('sjc-preview');
+    if (!container) return;
+
+    const row = (label, value, required = false) => {
+        if (value) {
+            return `<div class="sjc-row"><span class="sjc-label">${label}</span><span class="sjc-value">${esc(value)}</span></div>`;
+        }
+        if (required) {
+            return `<div class="sjc-row"><span class="sjc-label">${label}</span><span class="sjc-value sjc-missing">Not detected</span></div>`;
+        }
+        return '';
+    };
+
+    const urlRow = result.url
+        ? `<div class="sjc-row"><span class="sjc-label">URL</span><span class="sjc-value"><a href="${esc(result.url)}" target="_blank" rel="noopener noreferrer" class="sjc-url-link">${esc(result.url.length > 55 ? result.url.slice(0, 55) + '…' : result.url)}</a></span></div>`
+        : '';
+
+    const tagRow = result.tags.length
+        ? `<div class="sjc-row"><span class="sjc-label">Tags</span><span class="sjc-value">${result.tags.map(t => `<span class="job-tag">${esc(t)}</span>`).join(' ')}</span></div>`
+        : '';
+
+    const stars = '★'.repeat(result.score) + '☆'.repeat(5 - result.score);
+
+    const fit = result.locationFit;
+    const fitRow = fit ? `
+        <div class="sjc-row">
+            <span class="sjc-label">Location Fit</span>
+            <span class="sjc-value sjc-location-fit sjc-fit-${fit.level}">
+                <span class="sjc-fit-label">${esc(fit.label)}</span>
+                <span class="sjc-fit-msg">${esc(fit.message)}</span>
+            </span>
+        </div>` : '';
+
+    const uncHTML = result.uncertainties.length
+        ? `<div class="sjc-uncertainties">${result.uncertainties.map(u => `<div class="sjc-uncertainty">&#9432; ${esc(u)}</div>`).join('')}</div>`
+        : '';
+
+    container.innerHTML = `
+        <div class="sjc-preview-inner">
+            <div class="sjc-preview-header">Extracted Details</div>
+            ${row('Title',    result.title,    true)}
+            ${row('Company',  result.company,  true)}
+            ${urlRow}
+            ${row('Location', result.location)}
+            ${fitRow}
+            ${row('Salary',   result.salary)}
+            ${tagRow}
+            <div class="sjc-row">
+                <span class="sjc-label">Score</span>
+                <span class="sjc-value sjc-score sjc-score-${result.score}">${stars} ${result.score}/5</span>
+            </div>
+            <div class="sjc-note sjc-note-${result.score}">${esc(result.note)}</div>
+            ${uncHTML}
+            ${result.title ? '<div class="sjc-fill-hint">&#9432; Extracted details will be included when you save this job or open Full Details.</div>' : ''}
+        </div>`;
+    container.classList.remove('hidden');
+}
+
+function applySmartJobCaptureToQuickFields(result) {
+    const titleEl   = document.getElementById('jq-title');
+    const companyEl = document.getElementById('jq-company');
+    const urlEl     = document.getElementById('jq-url');
+    if (titleEl   && result.title)   titleEl.value   = result.title;
+    if (companyEl && result.company) companyEl.value = result.company;
+    if (urlEl     && result.url)     urlEl.value     = result.url;
+    // Trigger duplicate warning automatically after filling fields
+    checkJobDuplicateWarning(
+        titleEl?.value.trim()   || '',
+        companyEl?.value.trim() || '',
+        urlEl?.value.trim()     || '',
+        'jq-dup-warning', null
+    );
+}
+
+// Returns true when a cached SJC result still matches the current title/company values.
+// Used to prevent stale extraction from polluting an unrelated Quick Capture save.
+function _sjcResultMatchesCapture(sjc, title, company) {
+    if (!sjc) return false;
+    if (!title && !company) return false;
+    const et = normalizeText(sjc.title   || '');
+    const ec = normalizeText(sjc.company || '');
+    const qt = normalizeText(title       || '');
+    const qc = normalizeText(company     || '');
+    const titleMatch   = !et || !qt || et === qt || qt.includes(et) || et.includes(qt);
+    const companyMatch = !ec || !qc || ec === qc || qc.includes(ec) || ec.includes(qc);
+    return titleMatch && companyMatch;
+}
+
+function smartJobCaptureExtract() {
+    const input = document.getElementById('sjc-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) { showToast('Paste a job advert first'); return; }
+    const result = parseSmartJobCaptureText(text);
+    lastSmartJobCaptureResult = result;       // cache for quickAddJob / openJobModal
+    renderSmartJobCapturePreview(result);
+    applySmartJobCaptureToQuickFields(result);
+    showToast(result.title
+        ? 'Details extracted — check the Quick Capture fields below'
+        : 'Extracted what was possible — review results below'
+    );
+}
+
+function smartJobCaptureClear() {
+    lastSmartJobCaptureResult = null;
+    const input = document.getElementById('sjc-input');
+    if (input) input.value = '';
+    const preview = document.getElementById('sjc-preview');
+    if (preview) { preview.innerHTML = ''; preview.classList.add('hidden'); }
+}
+
+function bindSmartJobCaptureEvents() {
+    const input = document.getElementById('sjc-input');
+    if (!input) return;
+    // Ctrl+Enter or Cmd+Enter triggers extraction without clicking the button
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            smartJobCaptureExtract();
+        }
+    });
 }
 
 // ===== ALREADY APPLIED CHECKER =====
@@ -2491,6 +3009,7 @@ function init() {
     });
 
     bindAppliedCheckerEvents();
+    bindSmartJobCaptureEvents();
     renderBackupStatus();
     scheduleAutoBackup();
     renderRecoveryDashboard();

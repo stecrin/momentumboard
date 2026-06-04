@@ -493,6 +493,19 @@
             <div class="job-daily-bar" id="job-daily-bar"><div class="job-daily-fill" style="width:0%"></div></div>
         </div>
 
+        <!-- Smart Job Capture -->
+        <div class="job-smart-capture-section">
+            <div class="job-capture-label">&#10022; Smart Job Capture</div>
+            <p class="hint" style="margin-bottom:10px">Paste a full job advert, LinkedIn description, or job email to auto-fill the fields below.</p>
+            <textarea id="sjc-input" rows="6" placeholder="Paste full job advert, LinkedIn text, or job email here&hellip;"></textarea>
+            <div class="sjc-btn-row">
+                <button class="btn btn-primary" onclick="smartJobCaptureExtract()">Extract Details</button>
+                <button class="btn btn-ghost" onclick="smartJobCaptureClear()">Clear</button>
+                <span class="sjc-kbd-hint">Ctrl+Enter to extract</span>
+            </div>
+            <div id="sjc-preview" class="sjc-preview hidden"></div>
+        </div>
+
         <!-- Quick Capture -->
         <div class="job-capture-section">
             <div class="job-capture-label">Quick Capture</div>
