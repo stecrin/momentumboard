@@ -76,6 +76,46 @@ Building it also helped me strengthen and demonstrate:
 
 ---
 
+
+## Interface Preview
+
+A few screenshots showing the main MomentumBoard workflow, including the dashboard, task organisation, planning tools, job tracking, Smart Job Capture, duplicate checking, and local backup features.
+
+![MomentumBoard screenshot 01](assets/screenshots/momentumboard-01.png)
+
+![MomentumBoard screenshot 02](assets/screenshots/momentumboard-02.png)
+
+![MomentumBoard screenshot 03](assets/screenshots/momentumboard-03.png)
+
+![MomentumBoard screenshot 04](assets/screenshots/momentumboard-04.png)
+
+![MomentumBoard screenshot 05](assets/screenshots/momentumboard-05.png)
+
+![MomentumBoard screenshot 06](assets/screenshots/momentumboard-06.png)
+
+<details>
+<summary>View more screenshots</summary>
+
+![MomentumBoard screenshot 07](assets/screenshots/momentumboard-07.png)
+![MomentumBoard screenshot 08](assets/screenshots/momentumboard-08.png)
+![MomentumBoard screenshot 09](assets/screenshots/momentumboard-09.png)
+![MomentumBoard screenshot 10](assets/screenshots/momentumboard-10.png)
+![MomentumBoard screenshot 11](assets/screenshots/momentumboard-11.png)
+![MomentumBoard screenshot 12](assets/screenshots/momentumboard-12.png)
+![MomentumBoard screenshot 13](assets/screenshots/momentumboard-13.png)
+![MomentumBoard screenshot 14](assets/screenshots/momentumboard-14.png)
+![MomentumBoard screenshot 15](assets/screenshots/momentumboard-15.png)
+![MomentumBoard screenshot 16](assets/screenshots/momentumboard-16.png)
+![MomentumBoard screenshot 17](assets/screenshots/momentumboard-17.png)
+![MomentumBoard screenshot 18](assets/screenshots/momentumboard-18.png)
+![MomentumBoard screenshot 19](assets/screenshots/momentumboard-19.png)
+![MomentumBoard screenshot 20](assets/screenshots/momentumboard-20.png)
+![MomentumBoard screenshot 21](assets/screenshots/momentumboard-21.png)
+
+</details>
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
