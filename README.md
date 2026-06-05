@@ -16,7 +16,7 @@ Data lives in your browser's `localStorage`. Nothing is sent to a server. There 
 
 During an intensive period of job searching I found standard todo apps too generic and too slow to set up each day. I needed something opinionated: a tool that enforces a daily structure, surfaces the right tasks for my current energy, prevents duplicate job applications, and extracts job details from copied text automatically.
 
-Building it also gave me the opportunity to demonstrate:
+Building it also helped me strengthen and demonstrate:
 
 - Product thinking applied to a real, self-contained problem
 - JavaScript state management without a framework
@@ -146,7 +146,7 @@ Planned improvements — none are currently implemented:
 
 ---
 
-## Portfolio Notes
+## Technical Notes
 
 This project demonstrates:
 
