@@ -110,7 +110,6 @@ A few screenshots showing the main MomentumBoard workflow, including the dashboa
 ![MomentumBoard screenshot 18](assets/screenshots/momentumboard-18.png)
 ![MomentumBoard screenshot 19](assets/screenshots/momentumboard-19.png)
 ![MomentumBoard screenshot 20](assets/screenshots/momentumboard-20.png)
-![MomentumBoard screenshot 21](assets/screenshots/momentumboard-21.png)
 
 </details>
 
