@@ -162,7 +162,7 @@ This project demonstrates:
 
 ## Disclaimer
 
-This is personal portfolio software.
+This is local-first personal productivity software built for practical day-to-day use.
 
 - Not medical advice
 - Not financial advice
