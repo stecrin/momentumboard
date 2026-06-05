@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stefan RecoveryOS</title>
+    <title>MomentumBoard</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -149,7 +149,7 @@
 <!-- ===== HEADER ===== -->
 <header id="app-header">
     <div class="header-inner">
-        <div class="logo">RecoveryOS</div>
+        <div class="logo">MomentumBoard</div>
         <div class="header-actions">
             <span id="backup-status" class="backup-status no-print"></span>
             <button class="btn btn-ghost btn-sm no-print" onclick="exportData()" title="Download backup JSON">&#8595; Backup</button>
@@ -195,7 +195,7 @@
 
         <div class="phase-banner">
             <div class="phase-tag">Phase 1</div>
-            <span class="phase-text">Stabilisation &mdash; Stop chaos. Reduce overwhelm. Regain control.</span>
+            <span class="phase-text">Stabilisation &mdash; Stop chaos. Reduce overload. Regain control.</span>
         </div>
 
         <!-- Recovery State -->
@@ -204,7 +204,7 @@
             <div class="recovery-state-options">
                 <button class="rs-btn active" data-state="stable"      onclick="setRecoveryState('stable')">Stable</button>
                 <button class="rs-btn"        data-state="pressured"   onclick="setRecoveryState('pressured')">Pressured</button>
-                <button class="rs-btn"        data-state="overwhelmed" onclick="setRecoveryState('overwhelmed')">Overwhelmed</button>
+                <button class="rs-btn"        data-state="overloaded" onclick="setRecoveryState('overloaded')">Overwhelmed</button>
                 <button class="rs-btn"        data-state="recovery"    onclick="setRecoveryState('recovery')">Recovery</button>
                 <button class="rs-btn"        data-state="deep-focus"  onclick="setRecoveryState('deep-focus')">Deep Focus</button>
             </div>
@@ -306,7 +306,7 @@
                 <div class="rrule-item">No fighting multiple wars at once.</div>
                 <div class="rrule-item">Reduce complexity aggressively.</div>
                 <div class="rrule-item">Money problems must be faced directly. No avoidance.</div>
-                <div class="rrule-item">When overwhelmed &mdash; water, breathing, 3 tasks only.</div>
+                <div class="rrule-item">When overloaded &mdash; water, breathing, 3 tasks only.</div>
                 <div class="rrule-item">Protect mental clarity from emotional destabilisation.</div>
             </div>
         </div>
@@ -576,22 +576,22 @@
 
         <!-- Print-only header -->
         <div class="howto-print-header">
-            <h1>Stefan RecoveryOS &mdash; Quick Guide</h1>
+            <h1>MomentumBoard &mdash; Quick Guide</h1>
         </div>
 
         <div class="howto-top">
             <div>
                 <h2>How to Use</h2>
-                <p class="hint">Your complete guide to Stefan RecoveryOS.</p>
+                <p class="hint">Your complete guide to MomentumBoard.</p>
             </div>
             <button class="btn btn-outline btn-sm no-print" onclick="printHowTo()">&#128438; Print Guide</button>
         </div>
 
-        <!-- 0. What is RecoveryOS -->
+        <!-- 0. What is MomentumBoard -->
         <div class="howto-card">
             <div class="howto-card-label">Phase 1 &mdash; Stabilisation</div>
             <h3 class="howto-card-title">This is a recovery and execution system &mdash; not a productivity app</h3>
-            <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:10px;line-height:1.6">Stefan RecoveryOS exists for one purpose: to help you regain control during periods of emotional pressure, financial stress, overwhelm, and lack of clarity.</p>
+            <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:10px;line-height:1.6">MomentumBoard exists to support structured daily execution, task organisation, weekly planning, and job-application tracking during demanding periods.</p>
             <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:10px;line-height:1.6">The goal is not to do more. The goal is to <strong>stabilise, simplify, and execute the few actions that actually matter.</strong></p>
             <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.6">Phase 1 priorities: job applications, rent and debt recovery, nervous system regulation, daily execution discipline, emotional boundaries.</p>
         </div>
@@ -599,7 +599,7 @@
         <!-- 1. Quick Start -->
         <div class="howto-card">
             <div class="howto-card-label">Quick Start</div>
-            <h3 class="howto-card-title">When you feel lost or overwhelmed, run this sequence</h3>
+            <h3 class="howto-card-title">When you feel lost or overloaded, run this sequence</h3>
             <div class="qs-steps">
                 <div class="qs-step">
                     <div class="qs-num">1</div>
@@ -659,7 +659,7 @@
                         <li>New thought hits? Add to Inbox only &mdash; do not act on it yet</li>
                         <li>Do not re-plan or reorganise mid-session</li>
                         <li>Tick tasks off as you complete them</li>
-                        <li>Feeling overwhelmed? Press "I feel lost"</li>
+                        <li>Feeling overloaded? Press "I feel lost"</li>
                     </ul>
                 </div>
                 <div class="workflow-block">
@@ -727,7 +727,7 @@
                 <div class="feature-card">
                     <div class="feature-icon">🆘</div>
                     <div class="feature-name">Emergency Reset</div>
-                    <p>Press "I feel lost" when overwhelmed. The system guides you: stop, drink water, breathe for 60 seconds, write only 3 tasks, choose the smallest one, start for 10 minutes only.</p>
+                    <p>Press "I feel lost" when overloaded. The system guides you: stop, drink water, breathe for 60 seconds, write only 3 tasks, choose the smallest one, start for 10 minutes only.</p>
                 </div>
             </div>
         </div>

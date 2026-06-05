@@ -1,10 +1,10 @@
-# Stefan RecoveryOS
+# MomentumBoard
 
 ## Purpose
 
 This is not a normal productivity app.
 
-Stefan RecoveryOS is a personal recovery and execution system designed to help me regain control during periods of emotional pressure, financial stress, overwhelm, and lack of clarity.
+MomentumBoard is a personal recovery and execution system designed to support structured daily execution, task organisation, and decision-making during demanding periods.
 
 The goal is not to do more.
 

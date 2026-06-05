@@ -3,7 +3,7 @@
 ## Objective
 
 Stop chaos.
-Reduce overwhelm.
+Reduce overload.
 Regain control.
 
 This phase is NOT about:
@@ -61,7 +61,7 @@ No fighting multiple wars at once.
 Reduce complexity aggressively.
 
 ## Rule 3
-When overwhelmed:
+When overloaded:
 return to:
 - water
 - breathing

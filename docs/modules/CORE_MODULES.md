@@ -1,4 +1,4 @@
-# RecoveryOS — Core Modules
+# MomentumBoard — Core Modules
 
 ## 1. Recovery Dashboard
 
@@ -29,7 +29,7 @@ Inputs:
 - stress level
 - money pressure
 - sleep quality
-- emotional pressure
+- demanding periods
 - urgent deadlines
 
 Outputs:
@@ -95,7 +95,7 @@ It is about protecting execution.
 ## 6. Emergency Reset Mode
 
 Purpose:
-When overwhelmed, reduce life to the next safe action.
+When overloaded, reduce life to the next safe action.
 
 Sequence:
 1. Stop

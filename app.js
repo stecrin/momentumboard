@@ -43,7 +43,7 @@ const DEFAULT_NON_NEG = [
 const RECOVERY_STATE_GUIDANCE = {
     stable:       'System stable. Execute your daily plan consistently.',
     pressured:    'Under pressure. Prioritise income and debt actions first. Reduce other load.',
-    overwhelmed:  'Overwhelmed. One task at a time. Use Emergency Reset if needed.',
+    overloaded:  'Overwhelmed. One task at a time. Use Emergency Reset if needed.',
     recovery:     'In recovery mode. Daily minimum standard only. Be gentle with yourself.',
     'deep-focus': 'Deep focus engaged. One mission. No distractions. Execute.',
 };
