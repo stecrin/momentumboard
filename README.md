@@ -118,7 +118,7 @@ There is no cloud sync, no account system, and no server-side storage in the cur
 
 ## Security and Privacy Notice
 
-This is a **local-first portfolio application**. Data is stored in browser localStorage and does not leave your machine in normal use.
+This is a **local-first application**. Data is stored in browser localStorage and does not leave your machine in normal use.
 
 The current version does not include:
 
