@@ -6,7 +6,7 @@ A local-first productivity and job-application dashboard for organising daily ta
 
 ## What This Is
 
-MomentumBoard is a browser-based dashboard built as a personal portfolio project. It helps structure daily task management, weekly planning, and job application tracking — all stored locally in the browser with no backend or account system.
+MomentumBoard is a browser-based dashboard built to solve a real workflow problem: organising daily tasks, weekly planning, and job applications in one local-first system, without relying on a generic todo app or external service.
 
 Data lives in your browser's `localStorage`. Nothing is sent to a server. There is no login, no cloud sync, and no external dependencies.
 
