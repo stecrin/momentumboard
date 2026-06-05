@@ -94,8 +94,8 @@ Building it also gave me the opportunity to demonstrate:
 Clone the repository and serve it from a local server. Opening `index.html` directly via `file://` works but is not recommended — some browsers restrict or silently clear `file://` localStorage.
 
 ```bash
-git clone https://github.com/stecrin/stefan-recovery-os.git
-cd stefan-recovery-os
+git clone https://github.com/stecrin/momentumboard.git
+cd momentumboard
 python3 -m http.server 8181
 ```
 
