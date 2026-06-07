@@ -1,14 +1,14 @@
 # PROJECT STATUS — MomentumBoard
 
-_Last updated: 2026-06-06 by Claude (Documentation Developer)_
+_Last updated: 2026-06-07 by Claude (Documentation Developer)_
 
 ---
 
 ## Current phase
 
-**Portfolio documentation complete — AI Development OS layer being initialised.**
+**Branding complete — MomentumBoard naming is consistent across all surfaces.**
 
-Phase 1 stabilisation features are implemented and merged to `main`. The public README is polished with screenshots. `CLAUDE.md` and `PROJECT_STATUS.md` have just been created. The next work is either continued feature development or further AI workflow setup.
+Phase 1 stabilisation features are implemented and committed. README, screenshots, `CLAUDE.md`, `PROJECT_STATUS.md`, app title, header, Quick Guide help text, clone URL, and backup filename all use MomentumBoard. The project is clean and ready for the next feature or portfolio work.
 
 ---
 
@@ -42,9 +42,9 @@ Branch before starting any new feature or edit session. Do not commit directly t
 
 ## Current Agile context
 
-- **Current epic:** AI Development OS integration — connect MomentumBoard to the global workflow framework
-- **Current story:** Create `CLAUDE.md` and `PROJECT_STATUS.md` _(in progress — this session)_
-- **Acceptance criteria:** Both files exist, are committed to `main`, and contain accurate project context
+- **Current epic:** Branding consistency and AI Development OS integration
+- **Current story:** _(complete)_ MomentumBoard naming applied across all surfaces
+- **Acceptance criteria:** Met — all surfaces confirmed consistent; working tree clean
 
 ---
 
@@ -54,17 +54,15 @@ Branch before starting any new feature or edit session. Do not commit directly t
 |---|---|
 | Public README created (MomentumBoard branding, Interface Preview, 20 screenshots) | 2026-06-05 |
 | All screenshots committed to `assets/screenshots/` | 2026-06-05 |
-| Working tree confirmed clean, `main` synced with `origin/main` | 2026-06-06 |
-| `CLAUDE.md` created | 2026-06-06 |
-| `PROJECT_STATUS.md` created | 2026-06-06 |
+| `CLAUDE.md` and `PROJECT_STATUS.md` created and committed | 2026-06-06 |
+| Backup filename renamed to `momentumboard-backup-*` in `app.js` and `index.html` (commit 440186b) | 2026-06-07 |
 
 ---
 
 ## Next recommended actions
 
-1. **Commit `CLAUDE.md` and `PROJECT_STATUS.md`** — these files are untracked; they should be committed to `main` once reviewed.
-2. **Verify app name consistency** — confirm whether `index.html` `<title>` and the in-app header logo still say "RecoveryOS" or have been updated to "MomentumBoard". If still "RecoveryOS", update on a feature branch.
-3. **Update the clone URL placeholder in README.md** — the How to Run section contains `your-username`; replace with the real GitHub repository URL.
+1. **Commit `PROJECT_STATUS.md`** — this update is uncommitted; commit it to `main` to keep the status record current.
+2. **Begin next feature or portfolio work** — branding is complete; the project is ready for continued development.
 
 ---
 
@@ -72,8 +70,6 @@ Branch before starting any new feature or edit session. Do not commit directly t
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| App title may still say "RecoveryOS" in browser tab and header | Medium | Verify `index.html` — update on feature branch if needed |
-| README clone URL is a placeholder (`your-username`) | Low | Replace before sharing publicly |
 | No test suite | Low | Acceptable for this stage; note for future hardening phase |
 | `localStorage` data loss if browser data is cleared | Low | Backup/export feature is implemented; documented in README |
 
@@ -81,8 +77,7 @@ Branch before starting any new feature or edit session. Do not commit directly t
 
 ## Files changed this session
 
-- `CLAUDE.md` — created (project AI instructions)
-- `PROJECT_STATUS.md` — created (this file)
+- `PROJECT_STATUS.md` — updated to record completed branding work
 
 ---
 
@@ -109,13 +104,12 @@ No staging environment. No CI/CD pipeline.
 ## Human review required
 
 - **Required:** Yes
-- **Reason:** `CLAUDE.md` and `PROJECT_STATUS.md` are untracked and uncommitted. Human should review both files and explicitly approve before committing.
+- **Reason:** `PROJECT_STATUS.md` has been updated this session and is uncommitted.
 
 ---
 
 ## Open decisions
 
-- Should the in-app name be updated from "RecoveryOS" to "MomentumBoard" in `index.html` and `app.js`? — options: yes (consistency) / no (keep internal name separate) — owner: Stefan — blocking: no
 - Should a `DECISION_LOG.md` be created to track the RecoveryOS → MomentumBoard rename? — owner: Stefan — blocking: no
 
 ---
