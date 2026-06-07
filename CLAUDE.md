@@ -80,6 +80,7 @@ See `PROJECT_STATUS.md` for current detail. Summary:
 | `docs/modules/CORE_MODULES.md` | Module design reference |
 | `docs/phases/PHASE_1_STABILISATION.md` | Phase 1 scope reference |
 | `assets/screenshots/` | Interface screenshots for README preview |
+| `DECISION_LOG.md` | Records key project decisions not obvious from code or history |
 | `.gitignore` | Excludes backup JSON files and local machine files |
 
 ---

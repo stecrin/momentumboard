@@ -110,7 +110,7 @@ No staging environment. No CI/CD pipeline.
 
 ## Open decisions
 
-- Should a `DECISION_LOG.md` be created to track the RecoveryOS → MomentumBoard rename? — owner: Stefan — blocking: no
+None currently.
 
 ---
 
