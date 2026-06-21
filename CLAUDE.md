@@ -23,7 +23,7 @@ Its safety rules override anything in this file.
 ## Project identity
 
 - **Public name:** MomentumBoard
-- **Local folder:** `stefan-recovery-os` (historical name — do not use publicly)
+- **Local folder:** `momentumboard`
 - **Purpose:** A local-first productivity and job-application dashboard for organising daily tasks, weekly planning, job applications, and job-hunting decisions.
 - **Portfolio status:** Public portfolio project — not a production SaaS.
 
@@ -117,7 +117,7 @@ See `PROJECT_STATUS.md` for current detail. Summary:
 Never modify, delete, expose, or commit without explicit human sign-off:
 
 - `assets/screenshots/` — production screenshot assets for the public README
-- `docs/stefan-recovery-os-backup-*.json` — personal backup files (also gitignored)
+- `docs/momentumboard-backup-*.json` — personal backup files (also gitignored)
 - `.gitignore` — do not alter without discussion
 - `VISION.md` — personal project philosophy; treat as read-only context
 - Any file not named in the current session's approved task scope

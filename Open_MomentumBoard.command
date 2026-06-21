@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_DIR="$HOME/Projects/stefan-recovery-os"
+PROJECT_DIR="$HOME/Projects/momentumboard"
 PORT=8181
 URL="http://localhost:$PORT"
 
@@ -37,7 +37,7 @@ if lsof -i :"$PORT" -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo ""
     echo "No new server was started. Close this window when you are done."
 else
-    echo "Starting Stefan Recovery OS..."
+    echo "Starting MomentumBoard..."
     echo ""
 
     # Kill the server cleanly when this script exits (Ctrl+C or window close)

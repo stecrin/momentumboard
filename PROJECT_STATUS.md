@@ -56,6 +56,8 @@ Branch before starting any new feature or edit session. Do not commit directly t
 | All screenshots committed to `assets/screenshots/` | 2026-06-05 |
 | `CLAUDE.md` and `PROJECT_STATUS.md` created and committed | 2026-06-06 |
 | Backup filename renamed to `momentumboard-backup-*` in `app.js` and `index.html` (commit 440186b) | 2026-06-07 |
+| macOS launcher `Open_MomentumBoard.command` created and committed | 2026-06-21 |
+| Local folder renamed from `stefan-recovery-os` to `momentumboard`; launcher path updated | 2026-06-21 |
 
 ---
 
@@ -116,7 +118,7 @@ None currently.
 
 ## Notes
 
-- Local folder name is `stefan-recovery-os` — this is historical and does not need to change. The public-facing name is MomentumBoard.
+- Local folder name is `momentumboard` — renamed from `stefan-recovery-os` to match the GitHub repository and app identity (2026-06-21). The public-facing name is MomentumBoard.
 - The `localStorage` key is `scs_v1` — legacy of the original name; no need to change as it is internal only.
 - Backup JSON files in `docs/` are gitignored — do not commit them.
 - `VISION.md` contains personal context — treat as read-only reference; do not quote verbatim in public output.

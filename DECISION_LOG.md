@@ -50,3 +50,36 @@ Applied to: app title, in-app header logo, README, clone URL, backup filename, Q
 - [x] `CLAUDE.md` documents the naming rule
 - [x] `PROJECT_STATUS.md` records branding complete
 - [ ] `DECISION_LOG.md` to be added to `CLAUDE.md` important files table (low priority)
+
+---
+
+## Decision 002 — Rename local project folder to momentumboard
+
+- **Date:** 2026-06-21
+- **Status:** Accepted — applied
+
+### Context
+
+Decision 001 renamed the public-facing project identity to MomentumBoard but explicitly left the local folder name as `stefan-recovery-os`, noting that renaming it would break local git remotes. That reasoning was incorrect: the Git remote URL is stored inside `.git/config` and is not derived from the local folder name. The remote already pointed to `https://github.com/stecrin/momentumboard.git`, so a local folder rename carries no git linkage risk.
+
+The local folder `stefan-recovery-os` had become the only remaining surface using the old name, creating inconsistency between the local development environment, the GitHub repository name, and the public app identity.
+
+### Decision
+
+Rename the local project folder from `stefan-recovery-os` to `momentumboard`. Supersedes the "folder unchanged" consequence recorded in Decision 001.
+
+### Changes applied
+
+- Local folder renamed: `~/Projects/stefan-recovery-os` → `~/Projects/momentumboard`
+- Launcher renamed via `git mv`: `Open_Stefan_Recovery_OS.command` → `Open_MomentumBoard.command`
+- Launcher internal path updated: `$HOME/Projects/stefan-recovery-os` → `$HOME/Projects/momentumboard`
+- Launcher terminal message updated: `Starting Stefan Recovery OS...` → `Starting MomentumBoard...`
+- `CLAUDE.md` local folder reference updated
+- `PROJECT_STATUS.md` notes section updated
+- Git remote remained intact throughout: `origin https://github.com/stecrin/momentumboard.git`
+
+### Consequences
+
+- The local development environment, GitHub repository name, and public app identity are now fully consistent under the name `momentumboard` / `MomentumBoard`.
+- The `localStorage` key (`scs_v1`) is unchanged — internal only, renaming it would delete stored data.
+- The `CLAUDE.md` path reference and `Open_Stefan_Recovery_OS.command` filename no longer reference the old name.
